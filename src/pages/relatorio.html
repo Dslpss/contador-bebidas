@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório - Contador de Bebidas</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Relatório de Vendas</h1>
+        </header>
+
+        <nav class="mb-8">
+            <ul class="flex space-x-4">
+                <li><a href="index.html" class="text-blue-600 dark:text-blue-400 hover:underline">Início</a></li>
+                <li><a href="relatorio.html" class="text-blue-600 dark:text-blue-400 hover:underline">Relatório</a></li>
+                <li><a href="resultados.html" class="text-blue-600 dark:text-blue-400 hover:underline">Resultados</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <section class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Selecionar Data</h2>
+                <div class="flex items-center space-x-4">
+                  <input type="date" id="dataRelatorio" class="border rounded p-2 dark:bg-gray-700 dark:text-white">
+                  <button onclick="carregarRelatorio()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                      Carregar Relatório
+                  </button>
+              </div>
+          </section>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <section id="relatorioAlmoco" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                  <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Relatório Almoço</h2>
+                  <!-- Os resultados do almoço serão inseridos aqui dinamicamente -->
+              </section>
+
+              <section id="relatorioJantar" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                  <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Relatório Jantar</h2>
+                  <!-- Os resultados do jantar serão inseridos aqui dinamicamente -->
+              </section>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+              <section class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                  <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Gráfico Almoço</h2>
+                  <canvas id="chartAlmoco"></canvas>
+              </section>
+
+              <section class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                  <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Gráfico Jantar</h2>
+                  <canvas id="chartJantar"></canvas>
+              </section>
+          </div>
+
+          <section class="mt-8">
+              <button onclick="exportarPDF()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                  Exportar PDF
+              </button>
+          </section>
+      </main>
+
+      <footer class="mt-8 text-center text-gray-600 dark:text-gray-400">
+          <p>&copy; 2023 Contador de Bebidas. Todos os direitos reservados.</p>
+      </footer>
+  </div>
+
+  <div id="notification" class="fixed top-4 right-4 p-4 rounded-md text-white font-bold hidden"></div>
+
+  <div id="loading" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden">
+      <div class="loading-spinner"></div>
+  </div>
+
+  <button id="toggleTheme" class="fixed top-4 right-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white p-2 rounded-full">
+      <i class="fas fa-moon dark:hidden"></i>
+      <i class="fas fa-sun hidden dark:inline"></i>
+  </button>
+
+  <button id="toggleDebug" class="fixed bottom-4 right-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white p-2 rounded-full">
+      <i class="fas fa-bug"></i>
+  </button>
+
+  <div id="debug" class="mt-8 p-4 bg-gray-200 dark:bg-gray-700 rounded-lg hidden">
+      <h3 class="text-lg font-semibold mb-2">Debug Info:</h3>
+      <!-- Debug information will be inserted here -->
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>
