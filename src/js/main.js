@@ -1,4 +1,4 @@
-import firebaseConfig from './config.js';
+import { firebaseConfig } from './config';
 import '../css/styles.css';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, query, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
