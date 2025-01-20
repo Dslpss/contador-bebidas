@@ -15,7 +15,7 @@ yarn-error.log*
 /dist
 
 # Arquivos de configuração local
-src/js/config.js
+
 
 # Arquivos do sistema operacional
 .DS_Store

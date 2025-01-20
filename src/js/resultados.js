@@ -3,6 +3,7 @@ import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import Chart from 'chart.js/auto';
 import '../css/styles.css';
 
+
 function addDebugInfo(info) {
   const debugElement = document.getElementById('debug');
   debugElement.innerHTML += `<p class="mb-2">${info}</p>`;
