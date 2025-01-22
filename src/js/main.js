@@ -1,9 +1,12 @@
 import { firebaseConfig } from './config';
 import '../css/styles.css';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, query, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, getDocs, orderBy, deleteDoc, where } from 'firebase/firestore';
 import Chart from 'chart.js/auto';
 import 'chartjs-adapter-date-fns';
+import zoomPlugin from 'chartjs-plugin-zoom';
+
+Chart.register(zoomPlugin);
 
 // Inicialize o Firebase
 let app, db;
@@ -67,22 +70,22 @@ function gerarCamposEntrada() {
 
   tiposBebidas.forEach((bebida) => {
     const divAutomatico = document.createElement("div");
-    divAutomatico.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+    divAutomatico.className = "grid grid-cols-2 gap-4 mb-4";
     divAutomatico.innerHTML = `
       <div>
         <label for="${bebida.id}" class="block text-sm font-medium text-gray-700">${bebida.nome} (Pacotes)</label>
         <div class="mt-1 relative rounded-md shadow-sm">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <i class="fas fa-wine-bottle text-gray-400"></i>
+            <i class="fas fa-box text-gray-400"></i>
           </div>
-          <input type="text" id="${bebida.id}" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" aria-label="${bebida.nome}" placeholder="Valores separados por vírgula" />
+          <input type="text" id="${bebida.id}" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" aria-label="${bebida.nome} Pacotes" placeholder="Valores separados por vírgula" />
         </div>
       </div>
       <div>
-        <label for="${bebida.id}_avulsas" class="block text-sm font-medium text-gray-700">${bebida.nome} Avulsas</label>
+        <label for="${bebida.id}_avulsas" class="block text-sm font-medium text-gray-700">${bebida.nome} (Avulsas)</label>
         <div class="mt-1 relative rounded-md shadow-sm">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <i class="fas fa-plus text-gray-400"></i>
+            <i class="fas fa-wine-bottle text-gray-400"></i>
           </div>
           <input type="text" id="${bebida.id}_avulsas" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" aria-label="${bebida.nome} Avulsas" placeholder="Valores separados por vírgula" />
         </div>
@@ -91,6 +94,7 @@ function gerarCamposEntrada() {
     containerAutomatico.appendChild(divAutomatico);
 
     const divManual = document.createElement("div");
+    divManual.className = "mb-4";
     divManual.innerHTML = `
       <label for="${bebida.id}_manual" class="block text-sm font-medium text-gray-700">${bebida.nome}</label>
       <input type="text" id="${bebida.id}_manual" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Valores separados por vírgula">
@@ -313,22 +317,44 @@ function atualizarListaBebidas() {
     });
   });
 }
-
 async function carregarDadosGrafico() {
   try {
-    const q = query(collection(db, "consumo"), orderBy("data", "desc"));
+    const trintaDiasAtras = new Date();
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+
+    const q = query(
+      collection(db, "consumo"),
+      where("data", ">=", trintaDiasAtras),
+      orderBy("data", "desc")
+    );
+
     const querySnapshot = await getDocs(q);
-    const dados = {};
+    const dadosBrutos = {};
+
     querySnapshot.forEach((doc) => {
       const consumo = doc.data();
+      const dataFormatada = consumo.data.toDate().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
       Object.entries(consumo.resultados).forEach(([bebida, quantidade]) => {
-        if (!dados[bebida]) {
-          dados[bebida] = [];
+        if (!dadosBrutos[bebida]) {
+          dadosBrutos[bebida] = {};
         }
-        dados[bebida].push({ x: consumo.data.toDate(), y: quantidade });
+        if (!dadosBrutos[bebida][dataFormatada]) {
+          dadosBrutos[bebida][dataFormatada] = 0;
+        }
+        dadosBrutos[bebida][dataFormatada] += quantidade;
       });
     });
-    console.log('Dados carregados com sucesso:', dados);
+
+    const dados = {};
+    Object.entries(dadosBrutos).forEach(([bebida, valoresPorDia]) => {
+      dados[bebida] = Object.entries(valoresPorDia).map(([data, quantidade]) => ({
+        x: new Date(data),
+        y: quantidade
+      })).sort((a, b) => a.x - b.x); // Ordena por data crescente
+    });
+
+    console.log('Dados carregados e processados com sucesso:', dados);
     return dados;
   } catch (error) {
     console.error('Erro ao carregar dados do gráfico:', error);
@@ -336,31 +362,82 @@ async function carregarDadosGrafico() {
   }
 }
 
+let graficoConsumo; // Variável global para armazenar a instância do gráfico
+
 async function atualizarGrafico() {
   try {
     const dados = await carregarDadosGrafico();
     const ctx = document.getElementById('graficoConsumo').getContext('2d');
-    new Chart(ctx, {
+
+    if (graficoConsumo) {
+      graficoConsumo.destroy();
+    }
+
+    const hoje = new Date();
+    const seteDiasAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    graficoConsumo = new Chart(ctx, {
       type: 'line',
       data: {
         datasets: Object.entries(dados).map(([bebida, valores]) => ({
           label: bebida,
-          data: valores,
+          data: valores.filter(valor => valor.x >= seteDiasAtras),
           borderColor: `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`,
           tension: 0.1
         }))
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         scales: {
           x: {
             type: 'time',
             time: {
-              unit: 'day'
+              unit: 'day',
+              displayFormats: {
+                day: 'dd/MM'
+              }
+            },
+            min: seteDiasAtras,
+            max: hoje,
+            ticks: {
+              source: 'auto',
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 7
             }
           },
           y: {
-            beginAtZero: true
+            beginAtZero: true,
+            suggestedMax: 10 // Ajuste este valor conforme necessário
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          },
+          zoom: {
+            zoom: {
+              wheel: {
+                enabled: false,
+              },
+              pinch: {
+                enabled: false
+              },
+              mode: 'xy',
+            },
+            pan: {
+              enabled: false,
+            }
+          }
+        },
+        layout: {
+          padding: {
+            left: 10,
+            right: 10,
+            top: 20,
+            bottom: 10
           }
         }
       }
@@ -371,6 +448,33 @@ async function atualizarGrafico() {
   }
 }
 
+
+function inicializarMenuAbas() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const conteudos = {
+    automatico: document.querySelector('.dashboard-card:nth-child(1)'),
+    manual: document.querySelector('.dashboard-card:nth-child(2)'),
+    grafico: document.querySelector('.dashboard-card:nth-child(3)')
+  };
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tab = button.dataset.tab;
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      Object.values(conteudos).forEach(content => content.classList.add('hidden'));
+      conteudos[tab].classList.remove('hidden');
+
+      if (tab === 'grafico') {
+        atualizarGrafico();
+      }
+    });
+  });
+
+  // Ativar a primeira aba por padrão
+  tabButtons[0].click();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
@@ -378,6 +482,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     carregarValoresCampos();
     inicializarEventListeners();
     inicializarMenuMobile();
+    inicializarMenuAbas();
     await atualizarGrafico();
     console.log('Inicialização concluída com sucesso');
   } catch (error) {
@@ -434,5 +539,153 @@ function adicionarValidacaoCampos() {
 }
 
 adicionarValidacaoCampos();
+
+function salvarEstadoAplicacao() {
+  const estado = {
+    tiposBebidas: tiposBebidas,
+    valoresCampos: JSON.parse(localStorage.getItem('valoresCampos')),
+    // Adicione outros estados conforme necessário
+  };
+  localStorage.setItem('estadoAplicacao', JSON.stringify(estado));
+}
+
+function carregarEstadoAplicacao() {
+  const estadoSalvo = localStorage.getItem('estadoAplicacao');
+  if (estadoSalvo) {
+    const estado = JSON.parse(estadoSalvo);
+    tiposBebidas = estado.tiposBebidas;
+    localStorage.setItem('valoresCampos', JSON.stringify(estado.valoresCampos));
+    // Restaure outros estados conforme necessário
+    gerarCamposEntrada();
+    carregarValoresCampos();
+  }
+}
+
+carregarEstadoAplicacao();
+
+window.addEventListener('beforeunload', salvarEstadoAplicacao);
+
+function handleWindowResize() {
+  const sidebar = document.getElementById('sidebar');
+  const mobileMenuButton = document.getElementById('mobileMenuButton');
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 768) {
+      sidebar.classList.remove('hidden');
+      if (mobileMenuButton) {
+        mobileMenuButton.classList.remove('active');
+      }
+    } else {
+      sidebar.classList.add('hidden');
+    }
+    atualizarGrafico(); // Atualiza o gráfico para se ajustar ao novo tamanho da tela
+  });
+}
+
+handleWindowResize();
+
+function melhorarAcessibilidade() {
+  const elementos = document.querySelectorAll('button, a, input, select');
+  elementos.forEach(elemento => {
+    if (!elemento.getAttribute('aria-label')) {
+      elemento.setAttribute('aria-label', elemento.innerText || elemento.placeholder || '');
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('modalGerenciarBebidas');
+      if (!modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      }
+    }
+  });
+}
+
+melhorarAcessibilidade();
+
+function implementarTemaEscuro() {
+  const botaoTema = document.createElement('button');
+  botaoTema.innerText = 'Alternar Tema';
+  botaoTema.classList.add('custom-button', 'mt-4');
+  botaoTema.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('tema', document.body.classList.contains('dark-mode') ? 'escuro' : 'claro');
+    atualizarGrafico(); // Atualiza o gráfico para se ajustar ao novo tema
+  });
+  document.querySelector('main').appendChild(botaoTema);
+
+  // Carregar preferência de tema salva
+  if (localStorage.getItem('tema') === 'escuro') {
+    document.body.classList.add('dark-mode');
+  }
+}
+
+implementarTemaEscuro();
+
+function otimizarDesempenho() {
+  // Debounce para salvar valores dos campos
+  let timeoutId;
+  const debounceSalvarValores = () => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(salvarValoresCampos, 500);
+  };
+
+  tiposBebidas.forEach((bebida) => {
+    document.getElementById(bebida.id).addEventListener('input', debounceSalvarValores);
+    document.getElementById(`${bebida.id}_avulsas`).addEventListener('input', debounceSalvarValores);
+    document.getElementById(`${bebida.id}_manual`).addEventListener('input', debounceSalvarValores);
+  });
+
+  // Lazy loading para o gráfico
+  const graficoContainer = document.querySelector('.dashboard-card:nth-child(3)');
+  const observador = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        atualizarGrafico();
+        observador.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  observador.observe(graficoContainer);
+}
+
+otimizarDesempenho();
+
+function implementarPWA() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js').then(registration => {
+        console.log('Service Worker registrado com sucesso:', registration.scope);
+      }).catch(error => {
+        console.log('Falha ao registrar o Service Worker:', error);
+      });
+    });
+  }
+}
+
+implementarPWA();
+
+// Função para sincronizar dados offline
+async function sincronizarDadosOffline() {
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    const registration = await navigator.serviceWorker.ready;
+    try {
+      await registration.sync.register('sync-dados');
+      console.log('Sincronização de dados registrada');
+    } catch (error) {
+      console.error('Falha ao registrar sincronização de dados:', error);
+    }
+  }
+}
+
+// Chamar a função de sincronização quando necessário
+document.getElementById("calculoAutomatico").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const resultados = calcularAutomatico();
+  exibirResultados(resultados, 'automatico');
+  salvarResultados(resultados);
+  sincronizarDadosOffline();
+});
 
 // Fim do arquivo main.js

@@ -2,16 +2,23 @@
 <html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Dashboard de Bebidas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
-    <link rel="stylesheet" href="../src/css/styles.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.0/chartjs-plugin-zoom.min.js"></script>
+
+    <link rel="stylesheet" href="../src/css/styles.css" />
   </head>
   <body class="min-h-screen gradient-bg">
     <div id="notification" class="notification" role="alert"></div>
 
-    <header class="md:hidden bg-white shadow-md fixed top-0 left-0 right-0 z-10">
+    <header
+      class="md:hidden bg-white shadow-md fixed top-0 left-0 right-0 z-10">
       <div class="flex justify-between items-center p-4">
         <button id="mobileMenuButton" class="hamburger" aria-label="Menu">
           <span class="hamburger-line"></span>
@@ -22,8 +29,30 @@
       </div>
     </header>
 
+    <div class="md:hidden bg-white shadow-md sticky top-16 z-10">
+      <div class="flex justify-around">
+        <button
+          class="tab-button py-2 px-4 text-sm font-medium"
+          data-tab="automatico">
+          Automático
+        </button>
+        <button
+          class="tab-button py-2 px-4 text-sm font-medium"
+          data-tab="manual">
+          Manual
+        </button>
+        <button
+          class="tab-button py-2 px-4 text-sm font-medium"
+          data-tab="grafico">
+          Gráfico
+        </button>
+      </div>
+    </div>
+
     <div class="flex h-screen overflow-hidden pt-16 md:pt-0">
-      <div id="sidebar" class="hidden md:flex md:flex-shrink-0 transition-all duration-300 ease-in-out">
+      <div
+        id="sidebar"
+        class="hidden md:flex md:flex-shrink-0 transition-all duration-300 ease-in-out">
         <div class="flex flex-col w-64">
           <div class="flex flex-col h-0 flex-1 bg-gray-800">
             <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
@@ -31,19 +60,27 @@
                 <h1 class="text-white text-2xl font-bold">Bebidas</h1>
               </div>
               <nav class="mt-5 flex-1 px-2 bg-gray-800 space-y-1">
-                <a href="#" class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <a
+                  href="#"
+                  class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                   <i class="fas fa-home mr-3 text-gray-400"></i>
                   <span>Início</span>
                 </a>
-                <a href="resultados.html" class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <a
+                  href="resultados.html"
+                  class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                   <i class="fas fa-chart-bar mr-3 text-gray-400"></i>
                   <span>Resultados</span>
                 </a>
-                <a href="relatorio_vendas.html" class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <a
+                  href="relatorio_vendas.html"
+                  class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                   <i class="fas fa-file-alt mr-3 text-gray-400"></i>
                   <span>Relatório de Vendas</span>
                 </a>
-                <a href="#" class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                <a
+                  href="#"
+                  class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
                   <i class="fas fa-cog mr-3 text-gray-400"></i>
                   <span>Configurações</span>
                 </a>
@@ -54,14 +91,24 @@
       </div>
 
       <div class="flex flex-col w-full md:w-0 md:flex-1 overflow-hidden">
-        <main class="flex-1 relative overflow-y-auto focus:outline-none p-4 md:p-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 dashboard-grid">
+        <main
+          class="flex-1 relative overflow-y-auto focus:outline-none p-4 md:p-6">
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 dashboard-grid">
             <div class="dashboard-card p-6 bg-white bg-opacity-80">
-              <h2 class="text-2xl font-semibold mb-4 text-primary">Cálculo Automático</h2>
+              <h2 class="text-2xl font-semibold mb-4 text-primary">
+                Cálculo Automático
+              </h2>
               <form id="calculoAutomatico" class="space-y-4">
                 <div class="mb-4">
-                  <label for="turno" class="block text-sm font-medium text-gray-700">Turno</label>
-                  <select id="turno" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                  <label
+                    for="turno"
+                    class="block text-sm font-medium text-gray-700"
+                    >Turno</label
+                  >
+                  <select
+                    id="turno"
+                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
                     <option value="almoco">Almoço</option>
                     <option value="jantar">Jantar</option>
                   </select>
@@ -70,46 +117,76 @@
                   <!-- Campos de bebidas serão gerados dinamicamente aqui -->
                 </div>
                 <div class="flex flex-col space-y-2">
-                  <button type="submit" class="custom-button w-full">Calcular</button>
-                  <button type="button" id="limparCamposAutomaticos" class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Limpar Campos Automáticos</button>
+                  <button type="submit" class="custom-button w-full">
+                    Calcular
+                  </button>
+                  <button
+                    type="button"
+                    id="limparCamposAutomaticos"
+                    class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Limpar Campos Automáticos
+                  </button>
                 </div>
               </form>
-              <div id="resultados" class="mt-6 bg-white p-4 rounded-md shadow"></div>
+              <div
+                id="resultados"
+                class="mt-6 bg-white p-4 rounded-md shadow"></div>
             </div>
 
             <div class="dashboard-card p-6 bg-white bg-opacity-80">
-              <h2 class="text-2xl font-semibold mb-4 text-primary">Cálculo Manual</h2>
+              <h2 class="text-2xl font-semibold mb-4 text-primary">
+                Cálculo Manual
+              </h2>
               <form id="calculoManual" class="space-y-4">
                 <div id="camposBebidasManual" class="space-y-4">
                   <!-- Campos de bebidas para cálculo manual serão gerados dinamicamente aqui -->
                 </div>
                 <div class="flex flex-col space-y-2">
-                  <button type="submit" class="custom-button w-full" style="background-color: var(--secondary-color)">Calcular Manual</button>
-                  <button type="button" id="limparCamposManuais" class="w-full inline-flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                  <button
+                    type="submit"
+                    class="custom-button w-full"
+                    style="background-color: var(--secondary-color)">
+                    Calcular Manual
+                  </button>
+                  <button
+                    type="button"
+                    id="limparCamposManuais"
+                    class="w-full inline-flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                     Limpar Campos Manuais
                   </button>
                 </div>
               </form>
-              <div id="resultado_manual_display" class="mt-6 bg-white p-4 rounded-md shadow"></div>
+              <div
+                id="resultado_manual_display"
+                class="mt-6 bg-white p-4 rounded-md shadow"></div>
             </div>
-          </div>
 
-          <div class="mt-8 dashboard-card p-6 bg-white bg-opacity-80">
-            <h2 class="text-2xl font-semibold mb-4 text-primary">Consumo de Bebidas</h2>
-            <canvas id="graficoConsumo"></canvas>
+            <div class="dashboard-card p-6 bg-white bg-opacity-80">
+              <h2 class="text-2xl font-semibold mb-4 text-primary">
+                Consumo de Bebidas
+              </h2>
+              <div style="height: 300px; width: 100%; max-width: 600px">
+                <canvas id="graficoConsumo"></canvas>
+              </div>
+            </div>
           </div>
 
           <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button id="adicionarBebida" class="custom-button w-full">
               <i class="fas fa-plus mr-2"></i> Adicionar Nova Bebida
             </button>
-            <button id="gerenciarBebidas" class="custom-button w-full" style="background-color: var(--secondary-color)">
+            <button
+              id="gerenciarBebidas"
+              class="custom-button w-full"
+              style="background-color: var(--secondary-color)">
               <i class="fas fa-cog mr-2"></i> Gerenciar Bebidas
             </button>
           </div>
 
           <div class="mt-4">
-            <button id="exportarDados" class="custom-button w-full bg-green-600 hover:bg-green-700">
+            <button
+              id="exportarDados"
+              class="custom-button w-full bg-green-600 hover:bg-green-700">
               <i class="fas fa-file-export mr-2"></i> Exportar Dados
             </button>
           </div>
@@ -117,10 +194,20 @@
       </div>
     </div>
 
-    <div id="modalGerenciarBebidas" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div
+      id="modalGerenciarBebidas"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true">
+      <div
+        class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3 text-center">
-          <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Gerenciar Bebidas</h3>
+          <h3
+            class="text-lg leading-6 font-medium text-gray-900"
+            id="modal-title">
+            Gerenciar Bebidas
+          </h3>
           <div class="mt-2 px-7 py-3">
             <ul id="listaBebidas" class="space-y-2">
               <!-- Lista de bebidas será preenchida dinamicamente -->
@@ -128,7 +215,11 @@
           </div>
 
           <div class="items-center px-4 py-3">
-            <button id="fecharModal" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">Fechar</button>
+            <button
+              id="fecharModal"
+              class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+              Fechar
+            </button>
           </div>
         </div>
       </div>
