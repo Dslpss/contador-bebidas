@@ -167,23 +167,59 @@ function mostrarNotificacao(mensagem, tipo = "sucesso") {
   }, 3000);
 }
 
-function limparCamposAutomaticos() {
-  tiposBebidas.forEach((bebida) => {
-    document.getElementById(bebida.id).value = "";
-    document.getElementById(`${bebida.id}_avulsas`).value = "";
+function confirmarAcao(mensagem) {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  
+  const dialog = document.createElement('div');
+  dialog.className = 'bg-white p-6 rounded-lg shadow-xl';
+  dialog.innerHTML = `
+    <p class="mb-4">${mensagem}</p>
+    <div class="flex justify-end space-x-2">
+      <button id="cancelarAcao" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Não</button>
+      <button id="confirmarAcao" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Sim</button>
+    </div>
+  `;
+
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  return new Promise((resolve) => {
+    document.getElementById('cancelarAcao').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(false);
+    });
+
+    document.getElementById('confirmarAcao').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(true);
+    });
   });
-  document.getElementById("resultados").innerHTML = "";
-  salvarValoresCampos();
-  mostrarNotificacao("Campos automáticos limpos com sucesso!");
 }
 
-function limparCamposManuais() {
-  tiposBebidas.forEach((bebida) => {
-    document.getElementById(`${bebida.id}_manual`).value = "";
-  });
-  document.getElementById("resultado_manual_display").innerHTML = "";
-  salvarValoresCampos();
-  mostrarNotificacao("Campos manuais limpos com sucesso!");
+async function limparCamposAutomaticos() {
+  const confirmacao = await confirmarAcao('Tem certeza que deseja limpar os campos automáticos?');
+  if (confirmacao) {
+    tiposBebidas.forEach((bebida) => {
+      document.getElementById(bebida.id).value = "";
+      document.getElementById(`${bebida.id}_avulsas`).value = "";
+    });
+    document.getElementById("resultados").innerHTML = "";
+    salvarValoresCampos();
+    mostrarNotificacao("Campos automáticos limpos com sucesso!");
+  }
+}
+
+async function limparCamposManuais() {
+  const confirmacao = await confirmarAcao('Tem certeza que deseja limpar os campos manuais?');
+  if (confirmacao) {
+    tiposBebidas.forEach((bebida) => {
+      document.getElementById(`${bebida.id}_manual`).value = "";
+    });
+    document.getElementById("resultado_manual_display").innerHTML = "";
+    salvarValoresCampos();
+    mostrarNotificacao("Campos manuais limpos com sucesso!");
+  }
 }
 
 function inicializarMenuMobile() {
@@ -334,6 +370,7 @@ async function atualizarGrafico() {
     console.error('Erro ao atualizar o gráfico:', error);
   }
 }
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
@@ -348,27 +385,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// Função para exportar dados (pode ser implementada posteriormente)
 function exportarDados() {
   // Implementação da exportação de dados
   console.log("Função de exportar dados não implementada");
   mostrarNotificacao("Exportação de dados não implementada", "erro");
 }
 
-// Adicionar evento de clique ao botão de exportar dados
 document.getElementById("exportarDados").addEventListener("click", exportarDados);
 
-// Função para atualizar o gráfico periodicamente (se necessário)
 function atualizarGraficoPeriodicamente() {
   setInterval(async () => {
     await atualizarGrafico();
   }, 300000); // Atualiza a cada 5 minutos (300000 ms)
 }
 
-// Chamar a função para atualizar o gráfico periodicamente
 atualizarGraficoPeriodicamente();
 
-// Função para lidar com erros de rede
 function handleNetworkError() {
   window.addEventListener('online', () => {
     mostrarNotificacao("Conexão restabelecida", "sucesso");
@@ -380,16 +412,13 @@ function handleNetworkError() {
   });
 }
 
-// Chamar a função para lidar com erros de rede
 handleNetworkError();
 
-// Função para validar entradas do usuário
 function validarEntrada(input) {
   const regex = /^(\d+(\.\d+)?)(,\s*\d+(\.\d+)?)*$/;
   return regex.test(input.trim());
 }
 
-// Adicionar validação aos campos de entrada
 function adicionarValidacaoCampos() {
   const campos = document.querySelectorAll('input[type="text"]');
   campos.forEach(campo => {
@@ -404,97 +433,6 @@ function adicionarValidacaoCampos() {
   });
 }
 
-// Chamar a função para adicionar validação aos campos
 adicionarValidacaoCampos();
 
-// Função para salvar o estado da aplicação
-function salvarEstadoAplicacao() {
-  const estado = {
-    tiposBebidas: tiposBebidas,
-    valoresCampos: JSON.parse(localStorage.getItem('valoresCampos')),
-    // Adicione outros estados conforme necessário
-  };
-  localStorage.setItem('estadoAplicacao', JSON.stringify(estado));
-}
-
-// Função para carregar o estado da aplicação
-function carregarEstadoAplicacao() {
-  const estadoSalvo = localStorage.getItem('estadoAplicacao');
-  if (estadoSalvo) {
-    const estado = JSON.parse(estadoSalvo);
-    tiposBebidas = estado.tiposBebidas;
-    localStorage.setItem('valoresCampos', JSON.stringify(estado.valoresCampos));
-    // Restaure outros estados conforme necessário
-    gerarCamposEntrada();
-    carregarValoresCampos();
-  }
-}
-
-// Chamar a função para carregar o estado da aplicação ao iniciar
-carregarEstadoAplicacao();
-
-// Salvar o estado da aplicação antes de fechar a página
-window.addEventListener('beforeunload', salvarEstadoAplicacao);
-
-// Função para lidar com o redimensionamento da janela
-function handleWindowResize() {
-  const sidebar = document.getElementById('sidebar');
-  const mobileMenuButton = document.getElementById('mobileMenuButton');
-
-  window.addEventListener('resize', () => {
-    if (window.innerWidth >= 768) {
-      sidebar.classList.remove('hidden');
-      if (mobileMenuButton) {
-        mobileMenuButton.classList.remove('active');
-      }
-    } else {
-      sidebar.classList.add('hidden');
-    }
-  });
-}
-
-// Chamar a função para lidar com o redimensionamento da janela
-handleWindowResize();
-
-// Função para melhorar a acessibilidade
-function melhorarAcessibilidade() {
-  // Adicionar roles e aria-labels apropriados
-  const elementos = document.querySelectorAll('button, a, input, select');
-  elementos.forEach(elemento => {
-    if (!elemento.getAttribute('aria-label')) {
-      elemento.setAttribute('aria-label', elemento.innerText || elemento.placeholder || '');
-    }
-  });
-
-  // Adicionar navegação por teclado
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      const modal = document.getElementById('modalGerenciarBebidas');
-      if (!modal.classList.contains('hidden')) {
-        modal.classList.add('hidden');
-      }
-    }
-  });
-}
-
-// Chamar a função para melhorar a acessibilidade
-melhorarAcessibilidade();
-
-// Função para implementar tema escuro (pode ser expandida posteriormente)
-function implementarTemaEscuro() {
-  // Esta é uma implementação básica. Você pode expandir isso com um toggle de tema completo.
-  const botaoTema = document.createElement('button');
-  botaoTema.innerText = 'Alternar Tema';
-  botaoTema.classList.add('custom-button', 'mt-4');
-  botaoTema.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    // Adicione lógica adicional para alternar classes em outros elementos conforme necessário
-  });
-  document.querySelector('main').appendChild(botaoTema);
-}
-
-// Chamar a função para implementar o tema escuro
-implementarTemaEscuro();
-
-// Adicione quaisquer outras funções ou lógica necessária aqui
-
+// Fim do arquivo main.js
