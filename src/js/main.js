@@ -1,10 +1,19 @@
-import { firebaseConfig } from './config';
-import '../css/styles.css';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, query, getDocs, orderBy, deleteDoc, where } from 'firebase/firestore';
-import Chart from 'chart.js/auto';
-import 'chartjs-adapter-date-fns';
-import zoomPlugin from 'chartjs-plugin-zoom';
+import { firebaseConfig } from "./config";
+import "../css/styles.css";
+import { initializeApp } from "firebase/app";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  getDocs,
+  orderBy,
+  deleteDoc,
+  where,
+} from "firebase/firestore";
+import Chart from "chart.js/auto";
+import "chartjs-adapter-date-fns";
+import zoomPlugin from "chartjs-plugin-zoom";
 
 Chart.register(zoomPlugin);
 
@@ -12,11 +21,11 @@ Chart.register(zoomPlugin);
 let app, db;
 try {
   app = initializeApp(firebaseConfig);
-  console.log('Firebase inicializado com sucesso:', app);
+  console.log("Firebase inicializado com sucesso:", app);
   db = getFirestore(app);
-  console.log('Firestore inicializado:', db);
+  console.log("Firestore inicializado:", db);
 } catch (error) {
-  console.error('Erro ao inicializar o Firebase:', error);
+  console.error("Erro ao inicializar o Firebase:", error);
 }
 
 let tiposBebidas = [
@@ -45,19 +54,28 @@ function salvarValoresCampos() {
   const valores = {};
   tiposBebidas.forEach((bebida) => {
     valores[bebida.id] = document.getElementById(bebida.id).value;
-    valores[`${bebida.id}_avulsas`] = document.getElementById(`${bebida.id}_avulsas`).value;
-    valores[`${bebida.id}_manual`] = document.getElementById(`${bebida.id}_manual`).value;
+    valores[`${bebida.id}_avulsas`] = document.getElementById(
+      `${bebida.id}_avulsas`
+    ).value;
+    valores[`${bebida.id}_manual`] = document.getElementById(
+      `${bebida.id}_manual`
+    ).value;
   });
-  localStorage.setItem('valoresCampos', JSON.stringify(valores));
+  localStorage.setItem("valoresCampos", JSON.stringify(valores));
 }
 
 function carregarValoresCampos() {
-  const valores = JSON.parse(localStorage.getItem('valoresCampos'));
+  const valores = JSON.parse(localStorage.getItem("valoresCampos"));
   if (valores) {
     tiposBebidas.forEach((bebida) => {
-      if (valores[bebida.id]) document.getElementById(bebida.id).value = valores[bebida.id];
-      if (valores[`${bebida.id}_avulsas`]) document.getElementById(`${bebida.id}_avulsas`).value = valores[`${bebida.id}_avulsas`];
-      if (valores[`${bebida.id}_manual`]) document.getElementById(`${bebida.id}_manual`).value = valores[`${bebida.id}_manual`];
+      if (valores[bebida.id])
+        document.getElementById(bebida.id).value = valores[bebida.id];
+      if (valores[`${bebida.id}_avulsas`])
+        document.getElementById(`${bebida.id}_avulsas`).value =
+          valores[`${bebida.id}_avulsas`];
+      if (valores[`${bebida.id}_manual`])
+        document.getElementById(`${bebida.id}_manual`).value =
+          valores[`${bebida.id}_manual`];
     });
   }
 }
@@ -106,7 +124,10 @@ function gerarCamposEntrada() {
 }
 
 function calcularTotal(input) {
-  const valores = input.split(',').map(valor => parseFloat(valor.trim())).filter(val => !isNaN(val));
+  const valores = input
+    .split(",")
+    .map((valor) => parseFloat(valor.trim()))
+    .filter((val) => !isNaN(val));
   return valores.reduce((acc, curr) => acc + curr, 0);
 }
 
@@ -115,11 +136,20 @@ function calcularAutomatico() {
   tiposBebidas.forEach((bebida) => {
     const pacotesInput = document.getElementById(bebida.id).value;
     const avulsasInput = document.getElementById(`${bebida.id}_avulsas`).value;
-    
+
     const pacotes = calcularTotal(pacotesInput);
     const avulsas = calcularTotal(avulsasInput);
-    
-    resultados[bebida.id] = (pacotes * bebida.unidadesPorPacote) + avulsas;
+
+    resultados[bebida.id] = pacotes * bebida.unidadesPorPacote + avulsas;
+
+    // Adicionar o resultado ao campo de cálculo manual
+    const campoManual = document.getElementById(`${bebida.id}_manual`);
+    const valorExistente = campoManual.value.trim();
+    if (valorExistente) {
+      campoManual.value = `${valorExistente}, ${resultados[bebida.id]}`;
+    } else {
+      campoManual.value = `${resultados[bebida.id]}`;
+    }
   });
   return resultados;
 }
@@ -134,10 +164,12 @@ function calcularManual() {
 }
 
 function exibirResultados(resultados, tipo) {
-  const containerResultados = document.getElementById(tipo === 'automatico' ? 'resultados' : 'resultado_manual_display');
-  containerResultados.innerHTML = '';
+  const containerResultados = document.getElementById(
+    tipo === "automatico" ? "resultados" : "resultado_manual_display"
+  );
+  containerResultados.innerHTML = "";
   Object.entries(resultados).forEach(([bebida, quantidade]) => {
-    const bebidaInfo = tiposBebidas.find(b => b.id === bebida);
+    const bebidaInfo = tiposBebidas.find((b) => b.id === bebida);
     if (bebidaInfo) {
       containerResultados.innerHTML += `<p>${bebidaInfo.nome}: ${quantidade}</p>`;
     }
@@ -145,20 +177,22 @@ function exibirResultados(resultados, tipo) {
 }
 
 function salvarResultados(resultados) {
-  const turno = document.getElementById('turno').value;
+  const turno = document.getElementById("turno").value;
   const data = new Date();
-  console.log('Tentando salvar resultados:', { data, turno, resultados });
+  console.log("Tentando salvar resultados:", { data, turno, resultados });
   addDoc(collection(db, "consumo"), {
     data: data,
     turno: turno,
-    resultados: resultados
-  }).then(() => {
-    console.log('Resultados salvos com sucesso');
-    mostrarNotificacao("Resultados salvos com sucesso!");
-  }).catch((error) => {
-    console.error("Erro ao salvar resultados:", error);
-    mostrarNotificacao("Erro ao salvar resultados.", "erro");
-  });
+    resultados: resultados,
+  })
+    .then(() => {
+      console.log("Resultados salvos com sucesso");
+      mostrarNotificacao("Resultados salvos com sucesso!");
+    })
+    .catch((error) => {
+      console.error("Erro ao salvar resultados:", error);
+      mostrarNotificacao("Erro ao salvar resultados.", "erro");
+    });
 }
 
 function mostrarNotificacao(mensagem, tipo = "sucesso") {
@@ -172,11 +206,12 @@ function mostrarNotificacao(mensagem, tipo = "sucesso") {
 }
 
 function confirmarAcao(mensagem) {
-  const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-  
-  const dialog = document.createElement('div');
-  dialog.className = 'bg-white p-6 rounded-lg shadow-xl';
+  const overlay = document.createElement("div");
+  overlay.className =
+    "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+
+  const dialog = document.createElement("div");
+  dialog.className = "bg-white p-6 rounded-lg shadow-xl";
   dialog.innerHTML = `
     <p class="mb-4">${mensagem}</p>
     <div class="flex justify-end space-x-2">
@@ -189,12 +224,12 @@ function confirmarAcao(mensagem) {
   document.body.appendChild(overlay);
 
   return new Promise((resolve) => {
-    document.getElementById('cancelarAcao').addEventListener('click', () => {
+    document.getElementById("cancelarAcao").addEventListener("click", () => {
       document.body.removeChild(overlay);
       resolve(false);
     });
 
-    document.getElementById('confirmarAcao').addEventListener('click', () => {
+    document.getElementById("confirmarAcao").addEventListener("click", () => {
       document.body.removeChild(overlay);
       resolve(true);
     });
@@ -202,7 +237,9 @@ function confirmarAcao(mensagem) {
 }
 
 async function limparCamposAutomaticos() {
-  const confirmacao = await confirmarAcao('Tem certeza que deseja limpar os campos automáticos?');
+  const confirmacao = await confirmarAcao(
+    "Tem certeza que deseja limpar os campos automáticos?"
+  );
   if (confirmacao) {
     tiposBebidas.forEach((bebida) => {
       document.getElementById(bebida.id).value = "";
@@ -215,7 +252,9 @@ async function limparCamposAutomaticos() {
 }
 
 async function limparCamposManuais() {
-  const confirmacao = await confirmarAcao('Tem certeza que deseja limpar os campos manuais?');
+  const confirmacao = await confirmarAcao(
+    "Tem certeza que deseja limpar os campos manuais?"
+  );
   if (confirmacao) {
     tiposBebidas.forEach((bebida) => {
       document.getElementById(`${bebida.id}_manual`).value = "";
@@ -227,21 +266,22 @@ async function limparCamposManuais() {
 }
 
 function inicializarMenuMobile() {
-  const mobileMenuButton = document.getElementById('mobileMenuButton');
-  const sidebar = document.getElementById('sidebar');
+  const mobileMenuButton = document.getElementById("mobileMenuButton");
+  const sidebar = document.getElementById("sidebar");
 
   if (mobileMenuButton && sidebar) {
-    mobileMenuButton.addEventListener('click', () => {
-      sidebar.classList.toggle('hidden');
-      mobileMenuButton.classList.toggle('active');
+    mobileMenuButton.addEventListener("click", () => {
+      sidebar.classList.toggle("hidden");
+      mobileMenuButton.classList.toggle("active");
     });
 
     // Fechar menu ao clicar em um item do menu
-    sidebar.querySelectorAll('a').forEach(item => {
-      item.addEventListener('click', () => {
-        if (window.innerWidth < 768) { // Apenas para telas menores que 768px
-          sidebar.classList.add('hidden');
-          mobileMenuButton.classList.remove('active');
+    sidebar.querySelectorAll("a").forEach((item) => {
+      item.addEventListener("click", () => {
+        if (window.innerWidth < 768) {
+          // Apenas para telas menores que 768px
+          sidebar.classList.add("hidden");
+          mobileMenuButton.classList.remove("active");
         }
       });
     });
@@ -249,27 +289,39 @@ function inicializarMenuMobile() {
 }
 
 function inicializarEventListeners() {
-  document.getElementById("calculoAutomatico").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const resultados = calcularAutomatico();
-    exibirResultados(resultados, 'automatico');
-    salvarResultados(resultados);
-  });
+  document
+    .getElementById("calculoAutomatico")
+    .addEventListener("submit", (e) => {
+      e.preventDefault();
+      const resultados = calcularAutomatico();
+      exibirResultados(resultados, "automatico");
+      salvarValoresCampos(); // Salva os novos valores, incluindo os campos manuais atualizados
+      mostrarNotificacao(
+        "Resultados calculados e adicionados ao cálculo manual",
+        "sucesso"
+      );
+    });
 
   document.getElementById("calculoManual").addEventListener("submit", (e) => {
     e.preventDefault();
     const resultados = calcularManual();
-    exibirResultados(resultados, 'manual');
+    exibirResultados(resultados, "manual");
     salvarResultados(resultados);
   });
 
-  document.getElementById("limparCamposAutomaticos").addEventListener("click", limparCamposAutomaticos);
+  document
+    .getElementById("limparCamposAutomaticos")
+    .addEventListener("click", limparCamposAutomaticos);
 
-  document.getElementById("limparCamposManuais").addEventListener("click", limparCamposManuais);
+  document
+    .getElementById("limparCamposManuais")
+    .addEventListener("click", limparCamposManuais);
 
   document.getElementById("adicionarBebida").addEventListener("click", () => {
     const nome = prompt("Digite o nome da nova bebida:");
-    const unidadesPorPacote = parseInt(prompt("Digite o número de unidades por pacote:"));
+    const unidadesPorPacote = parseInt(
+      prompt("Digite o número de unidades por pacote:")
+    );
     if (nome && !isNaN(unidadesPorPacote)) {
       const id = nome.toLowerCase().replace(/ /g, "_");
       tiposBebidas.push({ id, nome, unidadesPorPacote });
@@ -289,9 +341,15 @@ function inicializarEventListeners() {
   });
 
   tiposBebidas.forEach((bebida) => {
-    document.getElementById(bebida.id).addEventListener('input', salvarValoresCampos);
-    document.getElementById(`${bebida.id}_avulsas`).addEventListener('input', salvarValoresCampos);
-    document.getElementById(`${bebida.id}_manual`).addEventListener('input', salvarValoresCampos);
+    document
+      .getElementById(bebida.id)
+      .addEventListener("input", salvarValoresCampos);
+    document
+      .getElementById(`${bebida.id}_avulsas`)
+      .addEventListener("input", salvarValoresCampos);
+    document
+      .getElementById(`${bebida.id}_manual`)
+      .addEventListener("input", salvarValoresCampos);
   });
 }
 
@@ -306,7 +364,6 @@ function atualizarListaBebidas() {
     `;
     listaBebidas.appendChild(li);
   });
-
   document.querySelectorAll(".excluir-bebida").forEach((button) => {
     button.addEventListener("click", (e) => {
       const id = e.target.getAttribute("data-id");
@@ -317,6 +374,7 @@ function atualizarListaBebidas() {
     });
   });
 }
+
 async function carregarDadosGrafico() {
   try {
     const trintaDiasAtras = new Date();
@@ -333,7 +391,7 @@ async function carregarDadosGrafico() {
 
     querySnapshot.forEach((doc) => {
       const consumo = doc.data();
-      const dataFormatada = consumo.data.toDate().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+      const dataFormatada = consumo.data.toDate().toISOString().split("T")[0]; // Formato YYYY-MM-DD
 
       Object.entries(consumo.resultados).forEach(([bebida, quantidade]) => {
         if (!dadosBrutos[bebida]) {
@@ -348,16 +406,18 @@ async function carregarDadosGrafico() {
 
     const dados = {};
     Object.entries(dadosBrutos).forEach(([bebida, valoresPorDia]) => {
-      dados[bebida] = Object.entries(valoresPorDia).map(([data, quantidade]) => ({
-        x: new Date(data),
-        y: quantidade
-      })).sort((a, b) => a.x - b.x); // Ordena por data crescente
+      dados[bebida] = Object.entries(valoresPorDia)
+        .map(([data, quantidade]) => ({
+          x: new Date(data),
+          y: quantidade,
+        }))
+        .sort((a, b) => a.x - b.x); // Ordena por data crescente
     });
 
-    console.log('Dados carregados e processados com sucesso:', dados);
+    console.log("Dados carregados e processados com sucesso:", dados);
     return dados;
   } catch (error) {
-    console.error('Erro ao carregar dados do gráfico:', error);
+    console.error("Erro ao carregar dados do gráfico:", error);
     return {};
   }
 }
@@ -367,7 +427,7 @@ let graficoConsumo; // Variável global para armazenar a instância do gráfico
 async function atualizarGrafico() {
   try {
     const dados = await carregarDadosGrafico();
-    const ctx = document.getElementById('graficoConsumo').getContext('2d');
+    const ctx = document.getElementById("graficoConsumo").getContext("2d");
 
     if (graficoConsumo) {
       graficoConsumo.destroy();
@@ -377,45 +437,47 @@ async function atualizarGrafico() {
     const seteDiasAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     graficoConsumo = new Chart(ctx, {
-      type: 'line',
+      type: "line",
       data: {
         datasets: Object.entries(dados).map(([bebida, valores]) => ({
           label: bebida,
-          data: valores.filter(valor => valor.x >= seteDiasAtras),
-          borderColor: `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`,
-          tension: 0.1
-        }))
+          data: valores.filter((valor) => valor.x >= seteDiasAtras),
+          borderColor: `rgb(${Math.random() * 255},${Math.random() * 255},${
+            Math.random() * 255
+          })`,
+          tension: 0.1,
+        })),
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           x: {
-            type: 'time',
+            type: "time",
             time: {
-              unit: 'day',
+              unit: "day",
               displayFormats: {
-                day: 'dd/MM'
-              }
+                day: "dd/MM",
+              },
             },
             min: seteDiasAtras,
             max: hoje,
             ticks: {
-              source: 'auto',
+              source: "auto",
               maxRotation: 0,
               autoSkip: true,
-              maxTicksLimit: 7
-            }
+              maxTicksLimit: 7,
+            },
           },
           y: {
             beginAtZero: true,
-            suggestedMax: 10 // Ajuste este valor conforme necessário
-          }
+            suggestedMax: 10, // Ajuste este valor conforme necessário
+          },
         },
         plugins: {
           legend: {
             display: true,
-            position: 'top'
+            position: "top",
           },
           zoom: {
             zoom: {
@@ -423,49 +485,50 @@ async function atualizarGrafico() {
                 enabled: false,
               },
               pinch: {
-                enabled: false
+                enabled: false,
               },
-              mode: 'xy',
+              mode: "xy",
             },
             pan: {
               enabled: false,
-            }
-          }
+            },
+          },
         },
         layout: {
           padding: {
             left: 10,
             right: 10,
             top: 20,
-            bottom: 10
-          }
-        }
-      }
+            bottom: 10,
+          },
+        },
+      },
     });
-    console.log('Gráfico atualizado com sucesso');
+    console.log("Gráfico atualizado com sucesso");
   } catch (error) {
-    console.error('Erro ao atualizar o gráfico:', error);
+    console.error("Erro ao atualizar o gráfico:", error);
   }
 }
 
-
 function inicializarMenuAbas() {
-  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabButtons = document.querySelectorAll(".tab-button");
   const conteudos = {
-    automatico: document.querySelector('.dashboard-card:nth-child(1)'),
-    manual: document.querySelector('.dashboard-card:nth-child(2)'),
-    grafico: document.querySelector('.dashboard-card:nth-child(3)')
+    automatico: document.querySelector(".dashboard-card:nth-child(1)"),
+    manual: document.querySelector(".dashboard-card:nth-child(2)"),
+    grafico: document.querySelector(".dashboard-card:nth-child(3)"),
   };
 
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
       const tab = button.dataset.tab;
-      tabButtons.forEach(btn => btn.classList.remove('active'));
-      button.classList.add('active');
-      Object.values(conteudos).forEach(content => content.classList.add('hidden'));
-      conteudos[tab].classList.remove('hidden');
+      tabButtons.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+      Object.values(conteudos).forEach((content) =>
+        content.classList.add("hidden")
+      );
+      conteudos[tab].classList.remove("hidden");
 
-      if (tab === 'grafico') {
+      if (tab === "grafico") {
         atualizarGrafico();
       }
     });
@@ -484,9 +547,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     inicializarMenuMobile();
     inicializarMenuAbas();
     await atualizarGrafico();
-    console.log('Inicialização concluída com sucesso');
+    console.log("Inicialização concluída com sucesso");
   } catch (error) {
-    console.error('Erro durante a inicialização:', error);
+    console.error("Erro durante a inicialização:", error);
   }
 });
 
@@ -496,7 +559,9 @@ function exportarDados() {
   mostrarNotificacao("Exportação de dados não implementada", "erro");
 }
 
-document.getElementById("exportarDados").addEventListener("click", exportarDados);
+document
+  .getElementById("exportarDados")
+  .addEventListener("click", exportarDados);
 
 function atualizarGraficoPeriodicamente() {
   setInterval(async () => {
@@ -507,12 +572,12 @@ function atualizarGraficoPeriodicamente() {
 atualizarGraficoPeriodicamente();
 
 function handleNetworkError() {
-  window.addEventListener('online', () => {
+  window.addEventListener("online", () => {
     mostrarNotificacao("Conexão restabelecida", "sucesso");
     // Recarregar dados ou atualizar a interface conforme necessário
   });
 
-  window.addEventListener('offline', () => {
+  window.addEventListener("offline", () => {
     mostrarNotificacao("Sem conexão de rede", "erro");
   });
 }
@@ -526,13 +591,16 @@ function validarEntrada(input) {
 
 function adicionarValidacaoCampos() {
   const campos = document.querySelectorAll('input[type="text"]');
-  campos.forEach(campo => {
-    campo.addEventListener('blur', (e) => {
-      if (!validarEntrada(e.target.value) && e.target.value !== '') {
-        mostrarNotificacao("Formato inválido. Use números separados por vírgula.", "erro");
-        e.target.classList.add('border-red-500');
+  campos.forEach((campo) => {
+    campo.addEventListener("blur", (e) => {
+      if (!validarEntrada(e.target.value) && e.target.value !== "") {
+        mostrarNotificacao(
+          "Formato inválido. Use números separados por vírgula.",
+          "erro"
+        );
+        e.target.classList.add("border-red-500");
       } else {
-        e.target.classList.remove('border-red-500');
+        e.target.classList.remove("border-red-500");
       }
     });
   });
@@ -543,18 +611,18 @@ adicionarValidacaoCampos();
 function salvarEstadoAplicacao() {
   const estado = {
     tiposBebidas: tiposBebidas,
-    valoresCampos: JSON.parse(localStorage.getItem('valoresCampos')),
+    valoresCampos: JSON.parse(localStorage.getItem("valoresCampos")),
     // Adicione outros estados conforme necessário
   };
-  localStorage.setItem('estadoAplicacao', JSON.stringify(estado));
+  localStorage.setItem("estadoAplicacao", JSON.stringify(estado));
 }
 
 function carregarEstadoAplicacao() {
-  const estadoSalvo = localStorage.getItem('estadoAplicacao');
+  const estadoSalvo = localStorage.getItem("estadoAplicacao");
   if (estadoSalvo) {
     const estado = JSON.parse(estadoSalvo);
     tiposBebidas = estado.tiposBebidas;
-    localStorage.setItem('valoresCampos', JSON.stringify(estado.valoresCampos));
+    localStorage.setItem("valoresCampos", JSON.stringify(estado.valoresCampos));
     // Restaure outros estados conforme necessário
     gerarCamposEntrada();
     carregarValoresCampos();
@@ -563,20 +631,20 @@ function carregarEstadoAplicacao() {
 
 carregarEstadoAplicacao();
 
-window.addEventListener('beforeunload', salvarEstadoAplicacao);
+window.addEventListener("beforeunload", salvarEstadoAplicacao);
 
 function handleWindowResize() {
-  const sidebar = document.getElementById('sidebar');
-  const mobileMenuButton = document.getElementById('mobileMenuButton');
+  const sidebar = document.getElementById("sidebar");
+  const mobileMenuButton = document.getElementById("mobileMenuButton");
 
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     if (window.innerWidth >= 768) {
-      sidebar.classList.remove('hidden');
+      sidebar.classList.remove("hidden");
       if (mobileMenuButton) {
-        mobileMenuButton.classList.remove('active');
+        mobileMenuButton.classList.remove("active");
       }
     } else {
-      sidebar.classList.add('hidden');
+      sidebar.classList.add("hidden");
     }
     atualizarGrafico(); // Atualiza o gráfico para se ajustar ao novo tamanho da tela
   });
@@ -585,18 +653,21 @@ function handleWindowResize() {
 handleWindowResize();
 
 function melhorarAcessibilidade() {
-  const elementos = document.querySelectorAll('button, a, input, select');
-  elementos.forEach(elemento => {
-    if (!elemento.getAttribute('aria-label')) {
-      elemento.setAttribute('aria-label', elemento.innerText || elemento.placeholder || '');
+  const elementos = document.querySelectorAll("button, a, input, select");
+  elementos.forEach((elemento) => {
+    if (!elemento.getAttribute("aria-label")) {
+      elemento.setAttribute(
+        "aria-label",
+        elemento.innerText || elemento.placeholder || ""
+      );
     }
   });
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      const modal = document.getElementById('modalGerenciarBebidas');
-      if (!modal.classList.contains('hidden')) {
-        modal.classList.add('hidden');
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const modal = document.getElementById("modalGerenciarBebidas");
+      if (!modal.classList.contains("hidden")) {
+        modal.classList.add("hidden");
       }
     }
   });
@@ -605,19 +676,22 @@ function melhorarAcessibilidade() {
 melhorarAcessibilidade();
 
 function implementarTemaEscuro() {
-  const botaoTema = document.createElement('button');
-  botaoTema.innerText = 'Alternar Tema';
-  botaoTema.classList.add('custom-button', 'mt-4');
-  botaoTema.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    localStorage.setItem('tema', document.body.classList.contains('dark-mode') ? 'escuro' : 'claro');
+  const botaoTema = document.createElement("button");
+  botaoTema.innerText = "Alternar Tema";
+  botaoTema.classList.add("custom-button", "mt-4");
+  botaoTema.addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+    localStorage.setItem(
+      "tema",
+      document.body.classList.contains("dark-mode") ? "escuro" : "claro"
+    );
     atualizarGrafico(); // Atualiza o gráfico para se ajustar ao novo tema
   });
-  document.querySelector('main').appendChild(botaoTema);
+  document.querySelector("main").appendChild(botaoTema);
 
   // Carregar preferência de tema salva
-  if (localStorage.getItem('tema') === 'escuro') {
-    document.body.classList.add('dark-mode');
+  if (localStorage.getItem("tema") === "escuro") {
+    document.body.classList.add("dark-mode");
   }
 }
 
@@ -632,34 +706,51 @@ function otimizarDesempenho() {
   };
 
   tiposBebidas.forEach((bebida) => {
-    document.getElementById(bebida.id).addEventListener('input', debounceSalvarValores);
-    document.getElementById(`${bebida.id}_avulsas`).addEventListener('input', debounceSalvarValores);
-    document.getElementById(`${bebida.id}_manual`).addEventListener('input', debounceSalvarValores);
+    document
+      .getElementById(bebida.id)
+      .addEventListener("input", debounceSalvarValores);
+    document
+      .getElementById(`${bebida.id}_avulsas`)
+      .addEventListener("input", debounceSalvarValores);
+    document
+      .getElementById(`${bebida.id}_manual`)
+      .addEventListener("input", debounceSalvarValores);
   });
 
   // Lazy loading para o gráfico
-  const graficoContainer = document.querySelector('.dashboard-card:nth-child(3)');
-  const observador = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        atualizarGrafico();
-        observador.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
+  const graficoContainer = document.querySelector(
+    ".dashboard-card:nth-child(3)"
+  );
+  const observador = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          atualizarGrafico();
+          observador.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
   observador.observe(graficoContainer);
 }
 
 otimizarDesempenho();
 
 function implementarPWA() {
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js').then(registration => {
-        console.log('Service Worker registrado com sucesso:', registration.scope);
-      }).catch(error => {
-        console.log('Falha ao registrar o Service Worker:', error);
-      });
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/src/js/service-worker.js", { scope: "/" })
+        .then((registration) => {
+          console.log(
+            "Service Worker registrado com sucesso:",
+            registration.scope
+          );
+        })
+        .catch((error) => {
+          console.log("Falha ao registrar o Service Worker:", error);
+        });
     });
   }
 }
@@ -668,24 +759,14 @@ implementarPWA();
 
 // Função para sincronizar dados offline
 async function sincronizarDadosOffline() {
-  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+  if ("serviceWorker" in navigator && "SyncManager" in window) {
     const registration = await navigator.serviceWorker.ready;
     try {
-      await registration.sync.register('sync-dados');
-      console.log('Sincronização de dados registrada');
+      await registration.sync.register("sync-dados");
+      console.log("Sincronização de dados registrada");
     } catch (error) {
-      console.error('Falha ao registrar sincronização de dados:', error);
+      console.error("Falha ao registrar sincronização de dados:", error);
     }
   }
 }
-
-// Chamar a função de sincronização quando necessário
-document.getElementById("calculoAutomatico").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const resultados = calcularAutomatico();
-  exibirResultados(resultados, 'automatico');
-  salvarResultados(resultados);
-  sincronizarDadosOffline();
-});
-
-// Fim do arquivo main.js
+sincronizarDadosOffline();

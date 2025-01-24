@@ -6,6 +6,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const { PurgeCSSPlugin } = require('purgecss-webpack-plugin');
 const glob = require('glob');
+const CopyWebpackPlugin = require('copy-webpack-plugin'); // Adicionado
 require('dotenv').config();
 
 const PATHS = {
@@ -19,7 +20,9 @@ const config = {
     main: './src/js/main.js',
     relatorio: './src/js/relatorio.js',
     resultados: './src/js/resultados.js'
+    // 'service-worker' entry foi removido
   },
+  
   output: {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].[contenthash].js',
@@ -73,6 +76,14 @@ const config = {
       'process.env.FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(process.env.FIREBASE_MESSAGING_SENDER_ID),
       'process.env.FIREBASE_APP_ID': JSON.stringify(process.env.FIREBASE_APP_ID),
       'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify(process.env.FIREBASE_MEASUREMENT_ID)
+    }),
+    new CopyWebpackPlugin({ // Adicionado
+      patterns: [
+        { 
+          from: path.resolve(__dirname, 'src', 'js', 'service-worker.js'),
+          to: 'service-worker.js' 
+        }
+      ],
     }),
   ],
   devServer: {

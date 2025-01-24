@@ -1,166 +1,216 @@
-import { db } from './firebase-init';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
-import Chart from 'chart.js/auto';
-import '../css/styles.css';
+// src/js/resultados.js
 
+import { firebaseConfig } from './config.js';
 
-function addDebugInfo(info) {
-  const debugElement = document.getElementById('debug');
-  debugElement.innerHTML += `<p class="mb-2">${info}</p>`;
-}
+// Inicialize o Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-function parseValue(value) {
-  if (typeof value === 'string') {
-    const match = value.match(/(\d+)\s*=\s*(\d+)/);
-    if (match) {
-      return parseInt(match[2], 10);
-    }
-    return parseInt(value.replace(/[^\d]/g, ''), 10) || 0;
-  }
-  return typeof value === 'number' ? value : 0;
-}
-
-function showLoading(show) {
-  document.getElementById('loading').style.display = show ? 'flex' : 'none';
-}
-
-function showNotification(message) {
-  const notification = document.getElementById('notification');
-  notification.textContent = message;
-  notification.classList.remove('hidden');
-  setTimeout(() => notification.classList.add('hidden'), 3000);
-}
-
-function createChart(elementId, data) {
-  const ctx = document.getElementById(elementId).getContext('2d');
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: Object.keys(data),
-      datasets: [{
-        label: 'Quantidade',
-        data: Object.values(data),
-        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true
-        }
-      }
-    }
-  });
-}
+let allResults = [];
 
 async function carregarResultados() {
-  showLoading(true);
-  try {
-    const dataInput = document.getElementById('dataResultados');
-    const dataResultados = new Date(dataInput.value);
-    dataResultados.setHours(0, 0, 0, 0);
+    try {
+        const resultadosContainer = document.getElementById('resultados-container');
+        resultadosContainer.innerHTML = '<p class="text-center">Carregando resultados...</p>';
 
-    addDebugInfo(`Data selecionada: ${dataResultados.toISOString()}`);
+        const q = db.collection("consumo").orderBy("data", "desc");
+        const querySnapshot = await q.get();
 
-    const q = query(
-      collection(db, "resultados"),
-      orderBy("timestamp", "asc")
-    );
+        allResults = [];
+        let html = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
+        html += '<thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Turno</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resultados</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th></tr></thead>';
+        html += '<tbody class="bg-white divide-y divide-gray-200">';
 
-    const querySnapshot = await getDocs(q);
-    addDebugInfo(`Número de documentos recuperados: ${querySnapshot.size}`);
+        querySnapshot.forEach((doc) => {
+            const dados = doc.data();
+            const data = dados.data.toDate().toLocaleString();
+            const turno = dados.turno;
+            const resultados = Object.entries(dados.resultados)
+                .map(([bebida, quantidade]) => `${bebida}: ${quantidade}`)
+                .join(', ');
 
-    let resultadosDia = [];
+            allResults.push({id: doc.id, ...dados});
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const docDate = data.timestamp.toDate();
-      docDate.setHours(0, 0, 0, 0);
+            html += `<tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${data}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${turno}</td>
+                <td class="px-6 py-4 text-sm">${resultados}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="editarResultado('${doc.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2">Editar</button>
+                    <button onclick="excluirResultado('${doc.id}')" class="text-red-600 hover:text-red-900">Excluir</button>
+                </td>
+            </tr>`;
+        });
 
-      if (docDate.getTime() === dataResultados.getTime()) {
-        addDebugInfo(`Documento processado: ${JSON.stringify(data)}`);
-        resultadosDia.push(data);
-      }
+        html += '</tbody></table></div>';
+
+        if (querySnapshot.empty) {
+            html = '<p class="text-center text-gray-500">Nenhum resultado encontrado.</p>';
+        }
+
+        resultadosContainer.innerHTML = html;
+    } catch (error) {
+        console.error("Erro ao carregar resultados:", error);
+        document.getElementById('resultados-container').innerHTML = '<p class="text-center text-red-500">Erro ao carregar resultados. Por favor, tente novamente mais tarde.</p>';
+    }
+}
+
+window.editarResultado = function(id) {
+    const resultado = allResults.find(r => r.id === id);
+    if (resultado) {
+        document.getElementById('editData').value = resultado.data.toDate().toISOString().slice(0, 16);
+        document.getElementById('editTurno').value = resultado.turno;
+        
+        const editResultados = document.getElementById('editResultados');
+        editResultados.innerHTML = '';
+        Object.entries(resultado.resultados).forEach(([bebida, quantidade]) => {
+            editResultados.innerHTML += `
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">${bebida}</label>
+                    <input type="number" name="${bebida}" value="${quantidade}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+            `;
+        });
+
+        document.getElementById('editModal').classList.remove('hidden');
+        document.getElementById('btnSalvarEdicao').onclick = () => salvarEdicao(id);
+    }
+}
+
+window.excluirResultado = async function(id) {
+    if (confirm('Tem certeza que deseja excluir este resultado?')) {
+        try {
+            await db.collection("consumo").doc(id).delete();
+            mostrarNotificacao('Resultado excluído com sucesso!', 'sucesso');
+            carregarResultados();
+        } catch (error) {
+            console.error("Erro ao excluir resultado:", error);
+            mostrarNotificacao('Erro ao excluir resultado. Tente novamente.', 'erro');
+        }
+    }
+}
+
+async function salvarEdicao(id) {
+    const form = document.getElementById('editForm');
+    const formData = new FormData(form);
+    const data = new Date(formData.get('data'));
+    const turno = formData.get('turno');
+    const resultados = {};
+
+    for (let [key, value] of formData.entries()) {
+        if (key !== 'data' && key !== 'turno') {
+            resultados[key] = parseInt(value, 10);
+        }
+    }
+
+    try {
+        await db.collection("consumo").doc(id).update({
+            data: data,
+            turno: turno,
+            resultados: resultados
+        });
+        mostrarNotificacao('Resultado atualizado com sucesso!', 'sucesso');
+        document.getElementById('editModal').classList.add('hidden');
+        carregarResultados();
+      } catch (error) {
+        console.error("Erro ao atualizar resultado:", error);
+        mostrarNotificacao('Erro ao atualizar resultado. Tente novamente.', 'erro');
+    }
+}
+
+function mostrarNotificacao(mensagem, tipo) {
+    const notification = document.getElementById('notification');
+    notification.textContent = mensagem;
+    notification.className = `notification ${tipo} fixed top-4 right-4 p-4 rounded-md text-white`;
+    
+    if (tipo === 'sucesso') {
+        notification.classList.add('bg-green-500');
+    } else {
+        notification.classList.add('bg-red-500');
+    }
+    
+    notification.classList.remove('hidden');
+    setTimeout(() => {
+        notification.classList.add('hidden');
+    }, 3000);
+}
+
+function exportarCSV() {
+    let csv = 'Data,Turno,';
+    const bebidasSet = new Set();
+    allResults.forEach(resultado => {
+        Object.keys(resultado.resultados).forEach(bebida => bebidasSet.add(bebida));
+    });
+    const bebidas = Array.from(bebidasSet);
+    csv += bebidas.join(',') + '\n';
+
+    allResults.forEach(resultado => {
+        const data = resultado.data.toDate().toLocaleString();
+        csv += `"${data}",${resultado.turno},`;
+        bebidas.forEach(bebida => {
+            csv += (resultado.resultados[bebida] || 0) + ',';
+        });
+        csv = csv.slice(0, -1) + '\n';
     });
 
-    addDebugInfo(`Número de resultados para o dia: ${resultadosDia.length}`);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "resultados_bebidas.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
 
-    if (resultadosDia.length === 0) {
-      showNotification('Nenhum resultado encontrado para a data selecionada.');
-      return;
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('hidden');
+    sidebar.classList.toggle('md:flex');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    carregarResultados();
+
+    const btnCancelarEdicao = document.getElementById('btnCancelarEdicao');
+    if (btnCancelarEdicao) {
+        btnCancelarEdicao.addEventListener('click', () => {
+            document.getElementById('editModal').classList.add('hidden');
+        });
     }
 
-    const consolidado = resultadosDia.reduce((acc, resultado) => {
-      Object.keys(resultado).forEach(key => {
-        if (key !== 'timestamp' && key !== 'tipo') {
-          acc[key] = (acc[key] || 0) + parseValue(resultado[key]);
+    const btnExportar = document.getElementById('btnExportar');
+    if (btnExportar) {
+        btnExportar.addEventListener('click', exportarCSV);
+    }
+
+    const mobileMenuButton = document.getElementById('mobileMenuButton');
+    if (mobileMenuButton) {
+        mobileMenuButton.addEventListener('click', toggleSidebar);
+    }
+
+    // Fechar o sidebar ao clicar fora dele em dispositivos móveis
+    document.addEventListener('click', (event) => {
+        const sidebar = document.getElementById('sidebar');
+        const mobileMenuButton = document.getElementById('mobileMenuButton');
+        
+        if (!sidebar.contains(event.target) && !mobileMenuButton.contains(event.target) && !sidebar.classList.contains('hidden')) {
+            toggleSidebar();
         }
-      });
-      return acc;
-    }, {});
+    });
 
-    const resultadosDiv = document.getElementById('resultadosConsolidados');
-    let html = "<div class='grid grid-cols-2 gap-4'>";
-    for (const [key, value] of Object.entries(consolidado)) {
-      html += `
-        <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
-          <p class="font-semibold text-gray-700 dark:text-gray-300">${key}</p>
-          <p class="text-lg text-primary dark:text-secondary">${value}</p>
-        </div>
-      `;
-    }
-    html += "</div>";
-    resultadosDiv.innerHTML = html;
-
-    createChart('chartResultados', consolidado);
-
-    showNotification('Resultados carregados com sucesso!');
-  } catch (error) {
-    console.error('Erro ao carregar resultados:', error);
-    showNotification('Erro ao carregar resultados. Por favor, tente novamente.');
-  } finally {
-    showLoading(false);
-  }
-}
-
-function toggleTheme() {
-  document.documentElement.classList.toggle('dark');
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const hoje = new Date().toISOString().split('T')[0];
-  document.getElementById('dataResultados').value = hoje;
-  carregarResultados();
-
-  const toggleDebugBtn = document.getElementById('toggleDebug');
-  const debugDiv = document.getElementById('debug');
-  toggleDebugBtn.addEventListener('click', () => {
-    debugDiv.classList.toggle('hidden');
-  });
-
-  // Verificar preferência de tema do usuário
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.documentElement.classList.add('dark');
-  }
-
-  // Listener para mudanças na preferência de tema do sistema
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-    if (e.matches) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  });
-
-  // Adicionar event listeners
-  document.getElementById('dataResultados').addEventListener('change', carregarResultados);
-  document.querySelector('button[aria-label="Carregar resultados"]').addEventListener('click', carregarResultados);
-  document.querySelector('button[aria-label="Alternar tema"]').addEventListener('click', toggleTheme);
+    // Ajustar o sidebar quando a janela for redimensionada
+    window.addEventListener('resize', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth >= 768) { // 768px é o breakpoint para md no Tailwind
+            sidebar.classList.remove('hidden');
+            sidebar.classList.add('md:flex');
+        } else {
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('md:flex');
+        }
+    });
 });
-
-// Exponha funções globalmente para uso em eventos inline
-window.carregarResultados = carregarResultados;
-window.toggleTheme = toggleTheme;

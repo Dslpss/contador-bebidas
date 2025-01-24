@@ -1,73 +1,126 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados - Contador de Bebidas</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Resultados - Dashboard de Bebidas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <link rel="stylesheet" href="../src/css/styles.css" />
 </head>
-<body class="bg-gray-100 dark:bg-gray-900">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Resultados</h1>
-        </header>
+<body class="min-h-screen bg-gray-100">
+    <div id="notification" class="notification fixed top-4 right-4 z-50 hidden" role="alert"></div>
 
-        <nav class="mb-8">
-            <ul class="flex space-x-4">
-                <li><a href="index.html" class="text-blue-600 dark:text-blue-400 hover:underline">Início</a></li>
-                <li><a href="relatorio.html" class="text-blue-600 dark:text-blue-400 hover:underline">Relatório</a></li>
-                <li><a href="resultados.html" class="text-blue-600 dark:text-blue-400 hover:underline">Resultados</a></li>
-            </ul>
-        </nav>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar para desktop -->
+        <div id="sidebar" class="hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64">
+                <div class="flex flex-col h-0 flex-1 bg-gray-800">
+                    <div class="flex items-center h-16 flex-shrink-0 px-4 bg-gray-900">
+                        <h1 class="text-white text-2xl font-bold">Bebidas</h1>
+                    </div>
+                    <div class="flex-1 flex flex-col overflow-y-auto">
+                        <nav class="flex-1 px-2 py-4 space-y-1">
+                            <a href="index.html" class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                <i class="fas fa-home mr-3 text-gray-400"></i>
+                                <span>Início</span>
+                            </a>
+                            <a href="#" class="nav-item bg-gray-900 text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                <i class="fas fa-chart-bar mr-3 text-gray-400"></i>
+                                <span>Resultados</span>
+                            </a>
+                            <a href="relatorio_vendas.html" class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                <i class="fas fa-file-alt mr-3 text-gray-400"></i>
+                                <span>Relatório de Vendas</span>
+                            </a>
+                            <a href="#" class="nav-item text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md">
+                                <i class="fas fa-cog mr-3 text-gray-400"></i>
+                                <span>Configurações</span>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <main>
-            <section class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Selecionar Data</h2>
-                <div class="flex items-center space-x-4">
-                    <input type="date" id="dataResultados" class="border rounded p-2 dark:bg-gray-700 dark:text-white">
-                    <button onclick="carregarResultados()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        Carregar Resultados
+        <!-- Conteúdo principal -->
+        <div class="flex flex-col w-0 flex-1 overflow-hidden">
+            <!-- Header móvel -->
+            <div class="md:hidden">
+                <div class="bg-gray-800 px-4 py-4 flex items-center justify-between">
+                    <button id="mobileMenuButton" class="text-gray-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
+                        <span class="sr-only">Abrir menu</span>
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <h1 class="text-white text-xl font-bold">Resultados</h1>
+                </div>
+            </div>
+
+            <main class="flex-1 relative overflow-y-auto focus:outline-none">
+                <div class="py-6">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+                        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                            <div class="px-4 py-5 sm:px-6 flex justify-between items-center flex-wrap">
+                                <h2 class="text-lg leading-6 font-medium text-gray-900 mb-2 sm:mb-0">Resultados Salvos</h2>
+                                <button id="btnExportar" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Exportar CSV
+                                </button>
+                            </div>
+                            <div class="px-4 py-5 sm:p-6">
+                                <div id="resultados-container" class="mt-4 overflow-x-auto">
+                                    <!-- Os resultados serão inseridos aqui pelo JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="editModal" class="fixed z-10 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                        Editar Resultado
+                    </h3>
+                    <div class="mt-2">
+                        <form id="editForm">
+                            <div class="mb-4">
+                                <label for="editData" class="block text-sm font-medium text-gray-700">Data</label>
+                                <input type="datetime-local" id="editData" name="data" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label for="editTurno" class="block text-sm font-medium text-gray-700">Turno</label>
+                                <select id="editTurno" name="turno" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option value="almoco">Almoço</option>
+                                    <option value="jantar">Jantar</option>
+                                </select>
+                            </div>
+                            <div id="editResultados">
+                                <!-- Campos dinâmicos para resultados serão inseridos aqui -->
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="btnSalvarEdicao" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        Salvar
+                    </button>
+                    <button type="button" id="btnCancelarEdicao" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancelar
                     </button>
                 </div>
-            </section>
-
-            <section id="resultadosConsolidados" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Resultados Consolidados</h2>
-                <!-- Os resultados consolidados serão inseridos aqui dinamicamente -->
-            </section>
-
-            <section class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <h2 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Gráfico de Resultados</h2>
-                <canvas id="chartResultados"></canvas>
-            </section>
-        </main>
-
-        <footer class="mt-8 text-center text-gray-600 dark:text-gray-400">
-            <p>&copy; 2023 Contador de Bebidas. Todos os direitos reservados.</p>
-        </footer>
+            </div>
+        </div>
     </div>
 
-    <div id="notification" class="fixed top-4 right-4 p-4 rounded-md text-white font-bold hidden"></div>
-
-    <div id="loading" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden">
-        <div class="loading-spinner"></div>
-    </div>
-
-    <button id="toggleTheme" class="fixed top-4 right-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white p-2 rounded-full">
-        <i class="fas fa-moon dark:hidden"></i>
-        <i class="fas fa-sun hidden dark:inline"></i>
-    </button>
-
-    <button id="toggleDebug" class="fixed bottom-4 right-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white p-2 rounded-full">
-        <i class="fas fa-bug"></i>
-    </button>
-
-    <div id="debug" class="mt-8 p-4 bg-gray-200 dark:bg-gray-700 rounded-lg hidden">
-        <h3 class="text-lg font-semibold mb-2">Debug Info:</h3>
-        <!-- Debug information will be inserted here -->
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+    <script type="module" src="../src/js/resultados.js"></script>
 </body>
 </html>
