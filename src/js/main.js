@@ -141,8 +141,12 @@ function calcularAutomatico() {
     const avulsas = calcularTotal(avulsasInput);
 
     resultados[bebida.id] = pacotes * bebida.unidadesPorPacote + avulsas;
+  });
+  return resultados;
+}
 
-    // Adicionar o resultado ao campo de cálculo manual
+function enviarParaCalculoManual(resultados) {
+  tiposBebidas.forEach((bebida) => {
     const campoManual = document.getElementById(`${bebida.id}_manual`);
     const valorExistente = campoManual.value.trim();
     if (valorExistente) {
@@ -151,8 +155,46 @@ function calcularAutomatico() {
       campoManual.value = `${resultados[bebida.id]}`;
     }
   });
-  return resultados;
+  salvarValoresCampos();
+  mostrarNotificacao("Resultados enviados para o cálculo manual com sucesso!", "sucesso");
+  
+  // Criar e exibir o popup personalizado
+  const popup = document.createElement('div');
+  popup.innerHTML = `
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="popupOverlay">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">Resultados Transferidos</h3>
+          <div class="mt-2 px-7 py-3">
+            <p class="text-sm text-gray-500">
+              Os resultados foram transferidos para o cálculo manual. Você pode ajustá-los conforme necessário.
+            </p>
+          </div>
+          <div class="items-center px-4 py-3">
+            <button id="fecharPopup" class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+              Entendi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  
+  // Adicionar evento para fechar o popup
+  document.getElementById('fecharPopup').addEventListener('click', () => {
+    document.body.removeChild(popup);
+  });
+  
+  // Fechar o popup ao clicar fora dele
+  document.getElementById('popupOverlay').addEventListener('click', (event) => {
+    if (event.target.id === 'popupOverlay') {
+      document.body.removeChild(popup);
+    }
+  });
 }
+
 
 function calcularManual() {
   const resultados = {};
@@ -295,12 +337,14 @@ function inicializarEventListeners() {
       e.preventDefault();
       const resultados = calcularAutomatico();
       exibirResultados(resultados, "automatico");
-      salvarValoresCampos(); // Salva os novos valores, incluindo os campos manuais atualizados
-      mostrarNotificacao(
-        "Resultados calculados e adicionados ao cálculo manual",
-        "sucesso"
-      );
+      salvarValoresCampos();
+      mostrarNotificacao("Resultados calculados", "sucesso");
     });
+
+  document.getElementById("enviarParaManual").addEventListener("click", () => {
+    const resultados = calcularAutomatico();
+    enviarParaCalculoManual(resultados);
+  });
 
   document.getElementById("calculoManual").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -347,7 +391,7 @@ function inicializarEventListeners() {
     document
       .getElementById(`${bebida.id}_avulsas`)
       .addEventListener("input", salvarValoresCampos);
-    document
+      document
       .getElementById(`${bebida.id}_manual`)
       .addEventListener("input", salvarValoresCampos);
   });
