@@ -147,19 +147,25 @@ function calcularAutomatico() {
 
 function enviarParaCalculoManual(resultados) {
   tiposBebidas.forEach((bebida) => {
-    const campoManual = document.getElementById(`${bebida.id}_manual`);
-    const valorExistente = campoManual.value.trim();
-    if (valorExistente) {
-      campoManual.value = `${valorExistente}, ${resultados[bebida.id]}`;
-    } else {
-      campoManual.value = `${resultados[bebida.id]}`;
+    if (resultados[bebida.id] > 0) {
+      // Verifica se o valor é maior que 0
+      const campoManual = document.getElementById(`${bebida.id}_manual`);
+      const valorExistente = campoManual.value.trim();
+      if (valorExistente) {
+        campoManual.value = `${valorExistente}, ${resultados[bebida.id]}`;
+      } else {
+        campoManual.value = `${resultados[bebida.id]}`;
+      }
     }
   });
   salvarValoresCampos();
-  mostrarNotificacao("Resultados enviados para o cálculo manual com sucesso!", "sucesso");
-  
+  mostrarNotificacao(
+    "Resultados enviados para o cálculo manual com sucesso!",
+    "sucesso"
+  );
+
   // Criar e exibir o popup personalizado
-  const popup = document.createElement('div');
+  const popup = document.createElement("div");
   popup.innerHTML = `
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="popupOverlay">
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -179,22 +185,21 @@ function enviarParaCalculoManual(resultados) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(popup);
-  
+
   // Adicionar evento para fechar o popup
-  document.getElementById('fecharPopup').addEventListener('click', () => {
+  document.getElementById("fecharPopup").addEventListener("click", () => {
     document.body.removeChild(popup);
   });
-  
+
   // Fechar o popup ao clicar fora dele
-  document.getElementById('popupOverlay').addEventListener('click', (event) => {
-    if (event.target.id === 'popupOverlay') {
+  document.getElementById("popupOverlay").addEventListener("click", (event) => {
+    if (event.target.id === "popupOverlay") {
       document.body.removeChild(popup);
     }
   });
 }
-
 
 function calcularManual() {
   const resultados = {};
@@ -391,7 +396,7 @@ function inicializarEventListeners() {
     document
       .getElementById(`${bebida.id}_avulsas`)
       .addEventListener("input", salvarValoresCampos);
-      document
+    document
       .getElementById(`${bebida.id}_manual`)
       .addEventListener("input", salvarValoresCampos);
   });
@@ -719,28 +724,6 @@ function melhorarAcessibilidade() {
 
 melhorarAcessibilidade();
 
-function implementarTemaEscuro() {
-  const botaoTema = document.createElement("button");
-  botaoTema.innerText = "Alternar Tema";
-  botaoTema.classList.add("custom-button", "mt-4");
-  botaoTema.addEventListener("click", () => {
-    document.body.classList.toggle("dark-mode");
-    localStorage.setItem(
-      "tema",
-      document.body.classList.contains("dark-mode") ? "escuro" : "claro"
-    );
-    atualizarGrafico(); // Atualiza o gráfico para se ajustar ao novo tema
-  });
-  document.querySelector("main").appendChild(botaoTema);
-
-  // Carregar preferência de tema salva
-  if (localStorage.getItem("tema") === "escuro") {
-    document.body.classList.add("dark-mode");
-  }
-}
-
-implementarTemaEscuro();
-
 function otimizarDesempenho() {
   // Debounce para salvar valores dos campos
   let timeoutId;
@@ -814,3 +797,40 @@ async function sincronizarDadosOffline() {
   }
 }
 sincronizarDadosOffline();
+
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+function adicionarDebounceCampos() {
+  const campos = document.querySelectorAll('input[type="text"]');
+  campos.forEach((campo) => {
+    campo.addEventListener("input", debounce(salvarValoresCampos, 500));
+  });
+}
+
+adicionarDebounceCampos();
+
+function lazyLoadGrafico() {
+  const graficoContainer = document.querySelector(
+    ".dashboard-card:nth-child(3)"
+  );
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          atualizarGrafico();
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.1 }
+  );
+  observer.observe(graficoContainer);
+}
+
+lazyLoadGrafico();
