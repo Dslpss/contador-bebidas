@@ -12,6 +12,7 @@
   --card-light: #ffffff;
   --success-color: #48bb78;
   --error-color: #f56565;
+  --warning-color: #ed8936;
 }
 
 body {
@@ -62,6 +63,14 @@ body {
 .custom-button:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.5);
+}
+
+.custom-button[style*="--warning-color"] {
+  background-color: var(--warning-color);
+}
+
+.custom-button[style*="--warning-color"]:hover {
+  background-color: #dd6b20;
 }
 
 @media (max-width: 640px) {
