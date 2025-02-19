@@ -1,0 +1,83 @@
+[33mcommit ed2417435cda61e18900e3d106a2f5169209aa4d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Dennis Emanuel <dennisemannuel93@gmail.com>
+Date:   Thu Feb 13 14:07:17 2025 -0300
+
+    Adiciona confirmação ao desfazer ações e melhora interface
+
+[33mcommit 6850e9be5731cbd5c9ef4af119ac100bfbadcea5[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Sat Feb 8 13:34:40 2025 -0300
+
+    Merge feature-atualizacoes-v2 into main
+
+[33mcommit 1cbd032c952970e471f6921a2b12fc387bf9cc23[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Fri Jan 24 10:24:54 2025 -0300
+
+    Finalização das atualizações v2
+
+[33mcommit 388931e20c33025572009d89156bb6bdafb4c9ba[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Fri Jan 24 01:42:46 2025 -0300
+
+    Adicionado copy-webpack-plugin às dependências de desenvolvimento
+
+[33mcommit f540ebe8f4196b4e651ffe8966d2216d4b619906[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Fri Jan 24 01:37:49 2025 -0300
+
+    Finalizado as atualizações para a feature
+
+[33mcommit 7ae534821fa55ea087f579e03ffaa1925bab38e9[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Wed Jan 22 13:09:38 2025 -0300
+
+    Filizado mudanças visual de forma geral na aplicação e correçoes de bugs na pagina
+
+[33mcommit f5e16249540af20c227d935826204be124fb5cdc[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Wed Jan 22 11:45:17 2025 -0300
+
+    Atualiza styles.css e main.js
+
+[33mcommit e63002f9057f8bc312f086d5deae8ccaae2c8f6b[m[33m ([m[1;31morigin/feature/novas-modificacoes[m[33m)[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Mon Jan 20 00:11:20 2025 -0300
+
+    Atualização do .gitignore e resultados.js
+
+[33mcommit 0b0e20f07340f8e39dd00cd69e2acedcecb297db[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Sun Jan 19 15:26:37 2025 -0300
+
+    Add config.js to version control
+
+[33mcommit 76b4eb3c08296b85eee5845bb43d91eedaa96422[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Sun Jan 19 15:18:28 2025 -0300
+
+    correções de bugs
+
+[33mcommit a731953c5b87a5a6804edb20d178bd0f6f35e4bb[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Sun Jan 19 15:10:44 2025 -0300
+
+    correções de bugs
+
+[33mcommit 83438975d418fcf5238170ceb1877ac8e58578ba[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Sun Jan 19 14:27:52 2025 -0300
+
+    atualizações
+
+[33mcommit 403c03ed59a4fb9f1088c3b5a711edfefea35cae[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Sun Jan 19 14:07:31 2025 -0300
+
+    Adiciona configuração do Netlify
+
+[33mcommit 34d851fa159e276df15c87795cc2b2772888e56c[m
+Author: Dennis Emannuel de Paiva Lopes <dennisemannuel93@gmail.com>
+Date:   Sun Jan 19 14:03:33 2025 -0300
+
+    Commit inicial: Adiciona projeto contador de bebidas
