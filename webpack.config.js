@@ -19,10 +19,6 @@ const config = {
   mode: process.env.NODE_ENV || "development",
   entry: {
     main: "./src/js/main.js",
-    auth: "./src/js/auth.js",
-    login: "./src/js/login.js",
-    adminLogin: "./src/js/admin-login.js",
-    admin: "./src/js/admin.js",
     relatorio: "./src/js/relatorio.js",
     resultados: "./src/js/resultados.js",
   },
@@ -76,21 +72,6 @@ const config = {
       template: "./src/pages/resultados.html",
       filename: "resultados.html",
       chunks: ["resultados"],
-    }),
-    new HtmlWebpackPlugin({
-      template: "./src/pages/login.html",
-      filename: "login.html",
-      chunks: ["login"],
-    }),
-    new HtmlWebpackPlugin({
-      template: "./src/pages/admin-login.html",
-      filename: "admin-login.html",
-      chunks: ["adminLogin"],
-    }),
-    new HtmlWebpackPlugin({
-      template: "./src/pages/admin.html",
-      filename: "admin.html",
-      chunks: ["admin"],
     }),
     new MiniCssExtractPlugin({
       filename: "css/[name].[contenthash].css",
