@@ -117,9 +117,19 @@ function gerarCamposEntrada() {
     divManual.className = "mb-4";
     divManual.innerHTML = `
       <label for="${bebida.id}_manual" class="block text-sm font-medium text-gray-700">${bebida.nome}</label>
-      <input type="text" id="${bebida.id}_manual" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Valores separados por vírgula">
+      <div class="flex items-center">
+        <input type="text" id="${bebida.id}_manual" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Valores separados por vírgula">
+        <button id="desfazer_${bebida.id}" class="ml-2 inline-flex items-center px-2 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+          Desfazer
+        </button>
+      </div>
     `;
     containerManual.appendChild(divManual);
+
+    // Adicionando o evento de clique para o botão de desfazer
+    document.getElementById(`desfazer_${bebida.id}`).addEventListener("click", () => {
+      desfazerUltimoResultado(bebida.id);
+    });
   });
 
   carregarValoresCampos();
@@ -150,7 +160,6 @@ function calcularAutomatico() {
 function enviarParaCalculoManual(resultados) {
   tiposBebidas.forEach((bebida) => {
     if (resultados[bebida.id] > 0) {
-      // Verifica se o valor é maior que 0
       const campoManual = document.getElementById(`${bebida.id}_manual`);
       const valorExistente = campoManual.value.trim();
       if (valorExistente) {
@@ -160,7 +169,10 @@ function enviarParaCalculoManual(resultados) {
       }
     }
   });
-  salvarValoresCampos();
+
+  // Salvar os valores no localStorage
+  salvarValoresNoLocalStorage();
+
   mostrarNotificacao(
     "Resultados enviados para o cálculo manual com sucesso!",
     "sucesso"
@@ -233,82 +245,19 @@ function salvarEstadoManual() {
   console.log("Histórico completo:", historicoManual);
 }
 
-function desfazerManual() {
-  // Criar modal de confirmação estilizado
-  const modal = document.createElement("div");
-  modal.className =
-    "fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center";
-  modal.id = "modalConfirmarDesfazer";
-
-  modal.innerHTML = `
-    <div class="relative p-5 border w-96 shadow-lg rounded-md bg-white">
-      <div class="mt-3 text-center">
-        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
-          <i class="fas fa-question-circle text-yellow-600 text-xl"></i>
-        </div>
-        <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Confirmar Ação</h3>
-        <div class="mt-2 px-7 py-3">
-          <p class="text-sm text-gray-500">
-            Tem certeza que deseja desfazer a última ação?
-          </p>
-        </div>
-        <div class="flex justify-center gap-4 mt-4">
-          <button id="confirmarDesfazer" 
-            class="px-4 py-2 bg-yellow-500 text-white text-base font-medium rounded-md shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-300">
-            Sim, desfazer
-          </button>
-          <button id="cancelarDesfazer"
-            class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300">
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Adicionar event listeners
-  document.getElementById("confirmarDesfazer").addEventListener("click", () => {
-    document.body.removeChild(modal);
-    executarDesfazer();
-  });
-
-  document.getElementById("cancelarDesfazer").addEventListener("click", () => {
-    document.body.removeChild(modal);
-  });
-
-  // Fechar ao clicar fora do modal
-  modal.addEventListener("click", (e) => {
-    if (e.target.id === "modalConfirmarDesfazer") {
-      document.body.removeChild(modal);
-    }
-  });
-}
-
-// Nova função que contém a lógica original de desfazer
-function executarDesfazer() {
-  console.log("Tentando desfazer...", historicoManual);
-
-  if (historicoManual.length > 0) {
-    const estadoAnterior = historicoManual[historicoManual.length - 1];
-    const estadoAtual = coletarValoresAtuais();
-
-    tiposBebidas.forEach((bebida) => {
-      const campo = document.getElementById(`${bebida.id}_manual`);
-      const valoresAtuais = estadoAtual[bebida.id] || [];
-      if (valoresAtuais.length > 0) {
-        valoresAtuais.pop();
-        campo.value = valoresAtuais.join(", ");
-      }
-    });
-
-    historicoManual.pop();
-    document.getElementById("resultado_manual_display").innerHTML = "";
-    salvarValoresCampos();
-    mostrarNotificacao("Último valor removido com sucesso!", "sucesso");
+function desfazerUltimoResultado(bebidaId) {
+  const campo = document.getElementById(`${bebidaId}_manual`);
+  const valoresAtuais = campo.value.split(",").map((v) => v.trim()).filter((v) => v !== "");
+  
+  if (valoresAtuais.length > 0) {
+    // Remove o último resultado
+    valoresAtuais.pop();
+    campo.value = valoresAtuais.join(", "); // Atualiza o campo com os valores restantes
+    mostrarNotificacao(`Último resultado removido para ${bebidaId}`, "sucesso");
+    
+    // Não atualizar o localStorage ou enviar dados ao banco aqui
   } else {
-    mostrarNotificacao("Não há valores para desfazer", "erro");
+    mostrarNotificacao("Não há resultados para desfazer", "erro");
   }
 }
 
@@ -323,6 +272,9 @@ function exibirResultados(resultados, tipo) {
       containerResultados.innerHTML += `<p>${bebidaInfo.nome}: ${quantidade}</p>`;
     }
   });
+
+  // Salvar resultados no localStorage
+  localStorage.setItem(`${tipo}_resultados`, JSON.stringify(resultados));
 }
 
 function salvarResultados(resultados) {
@@ -455,16 +407,11 @@ function inicializarEventListeners() {
   });
 
   document.getElementById("calculoManual").addEventListener("submit", (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Impede o envio padrão do formulário
     salvarEstadoManual(); // Salvar estado atual antes de calcular
     const resultados = calcularManual();
     exibirResultados(resultados, "manual");
-    salvarResultados(resultados);
   });
-
-  document
-    .getElementById("desfazerManual")
-    .addEventListener("click", desfazerManual);
 
   document
     .getElementById("limparCamposAutomaticos")
@@ -507,6 +454,11 @@ function inicializarEventListeners() {
     document
       .getElementById(`${bebida.id}_manual`)
       .addEventListener("input", salvarValoresCampos);
+  });
+
+  document.getElementById("enviarResultados").addEventListener("click", () => {
+    const resultados = calcularManual(); // Coletar resultados do cálculo manual
+    salvarResultados(resultados); // Enviar resultados ao banco de dados
   });
 }
 
@@ -695,6 +647,7 @@ function inicializarMenuAbas() {
   tabButtons[0].click();
 }
 
+<<<<<<< HEAD
 // Adicione esta nova função para auto-salvamento
 function iniciarAutoSalvamento() {
   setInterval(() => {
@@ -712,11 +665,27 @@ function iniciarAutoSalvamento() {
 }
 
 // Modifique o evento DOMContentLoaded para incluir o auto-salvamento
+=======
+function carregarResultadosDoLocalStorage() {
+  const resultadosAutomaticos = JSON.parse(localStorage.getItem("automatico_resultados"));
+  const resultadosManuais = JSON.parse(localStorage.getItem("manual_resultados"));
+
+  if (resultadosAutomaticos) {
+    exibirResultados(resultadosAutomaticos, "automatico");
+  }
+
+  if (resultadosManuais) {
+    exibirResultados(resultadosManuais, "manual");
+  }
+}
+
+>>>>>>> cd9c01fd59806d8f31dd5b7c92dad7b86e2a6fab
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
     gerarCamposEntrada();
-    carregarValoresCampos();
+    carregarValoresDoLocalStorage(); // Carrega os valores do localStorage
+    carregarResultadosDoLocalStorage(); // Carrega os resultados do localStorage
     inicializarEventListeners();
     inicializarMenuMobile();
     inicializarMenuAbas();
@@ -960,3 +929,24 @@ function lazyLoadGrafico() {
 }
 
 lazyLoadGrafico();
+
+function salvarValoresNoLocalStorage() {
+  const valores = {};
+  tiposBebidas.forEach((bebida) => {
+    const campo = document.getElementById(`${bebida.id}_manual`);
+    valores[bebida.id] = campo.value;
+  });
+  localStorage.setItem("valoresBebidas", JSON.stringify(valores));
+}
+
+function carregarValoresDoLocalStorage() {
+  const valoresSalvos = JSON.parse(localStorage.getItem("valoresBebidas"));
+  if (valoresSalvos) {
+    tiposBebidas.forEach((bebida) => {
+      const campo = document.getElementById(`${bebida.id}_manual`);
+      if (valoresSalvos[bebida.id]) {
+        campo.value = valoresSalvos[bebida.id];
+      }
+    });
+  }
+}
