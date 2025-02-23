@@ -1,31 +1,36 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const webpack = require('webpack');
-const TerserPlugin = require('terser-webpack-plugin');
-const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
-const { PurgeCSSPlugin } = require('purgecss-webpack-plugin');
-const glob = require('glob');
-const CopyWebpackPlugin = require('copy-webpack-plugin'); // Adicionado
-require('dotenv').config();
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const webpack = require("webpack");
+const TerserPlugin = require("terser-webpack-plugin");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const { PurgeCSSPlugin } = require("purgecss-webpack-plugin");
+const glob = require("glob");
+const CopyWebpackPlugin = require("copy-webpack-plugin"); // Adicionado
+require("dotenv").config();
 
 const PATHS = {
-  src: path.join(__dirname, 'src')
+  src: path.join(__dirname, "src"),
 };
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 const config = {
+  mode: process.env.NODE_ENV || "development",
   entry: {
-    main: './src/js/main.js',
-    relatorio: './src/js/relatorio.js',
-    resultados: './src/js/resultados.js'
-    // 'service-worker' entry foi removido
+    main: "./src/js/main.js",
+    auth: "./src/js/auth.js",
+    login: "./src/js/login.js",
+    adminLogin: "./src/js/admin-login.js",
+    admin: "./src/js/admin.js",
+    relatorio: "./src/js/relatorio.js",
+    resultados: "./src/js/resultados.js",
   },
-  
+
   output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: '[name].[contenthash].js',
+    path: path.resolve(__dirname, "dist"),
+    filename: "[name].[contenthash].js",
+    publicPath: "/",
     clean: true,
   },
   module: {
@@ -34,76 +39,105 @@ const config = {
         test: /\.js$/,
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',
+          loader: "babel-loader",
           options: {
-            presets: ['@babel/preset-env'],
-            plugins: ['@babel/plugin-syntax-dynamic-import']
-          }
+            presets: ["@babel/preset-env"],
+            plugins: ["@babel/plugin-syntax-dynamic-import"],
+          },
         },
       },
       {
         test: /\.css$/,
         use: [
-          isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
-          'css-loader',
-          'postcss-loader'
+          MiniCssExtractPlugin.loader,
+          {
+            loader: "css-loader",
+            options: {
+              importLoaders: 1,
+            },
+          },
+          "postcss-loader",
         ],
       },
     ],
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './src/pages/index.html',
-      filename: 'index.html',
-      chunks: ['main']
+      template: "./src/pages/index.html",
+      filename: "index.html",
+      chunks: ["main"],
     }),
     new HtmlWebpackPlugin({
-      template: './src/pages/relatorio.html',
-      filename: 'relatorio.html',
-      chunks: ['relatorio']
+      template: "./src/pages/relatorio.html",
+      filename: "relatorio.html",
+      chunks: ["relatorio"],
     }),
     new HtmlWebpackPlugin({
-      template: './src/pages/resultados.html',
-      filename: 'resultados.html',
-      chunks: ['resultados']
+      template: "./src/pages/resultados.html",
+      filename: "resultados.html",
+      chunks: ["resultados"],
+    }),
+    new HtmlWebpackPlugin({
+      template: "./src/pages/login.html",
+      filename: "login.html",
+      chunks: ["login"],
+    }),
+    new HtmlWebpackPlugin({
+      template: "./src/pages/admin-login.html",
+      filename: "admin-login.html",
+      chunks: ["adminLogin"],
+    }),
+    new HtmlWebpackPlugin({
+      template: "./src/pages/admin.html",
+      filename: "admin.html",
+      chunks: ["admin"],
+    }),
+    new MiniCssExtractPlugin({
+      filename: "css/[name].[contenthash].css",
     }),
     new webpack.DefinePlugin({
-      'process.env.FIREBASE_API_KEY': JSON.stringify(process.env.FIREBASE_API_KEY),
-      'process.env.FIREBASE_AUTH_DOMAIN': JSON.stringify(process.env.FIREBASE_AUTH_DOMAIN),
-      'process.env.FIREBASE_DATABASE_URL': JSON.stringify(process.env.FIREBASE_DATABASE_URL),
-      'process.env.FIREBASE_PROJECT_ID': JSON.stringify(process.env.FIREBASE_PROJECT_ID),
-      'process.env.FIREBASE_STORAGE_BUCKET': JSON.stringify(process.env.FIREBASE_STORAGE_BUCKET),
-      'process.env.FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(process.env.FIREBASE_MESSAGING_SENDER_ID),
-      'process.env.FIREBASE_APP_ID': JSON.stringify(process.env.FIREBASE_APP_ID),
-      'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify(process.env.FIREBASE_MEASUREMENT_ID)
+      "process.env": JSON.stringify(process.env),
     }),
-    new CopyWebpackPlugin({ // Adicionado
+    new CopyWebpackPlugin({
+      // Adicionado
       patterns: [
-        { 
-          from: path.resolve(__dirname, 'src', 'js', 'service-worker.js'),
-          to: 'service-worker.js' 
-        }
+        {
+          from: path.resolve(__dirname, "src", "js", "service-worker.js"),
+          to: "service-worker.js",
+        },
       ],
     }),
   ],
   devServer: {
     static: {
-      directory: path.join(__dirname, 'dist'),
+      directory: path.join(__dirname, "dist"),
     },
     compress: true,
     port: 9000,
+    hot: true,
+    historyApiFallback: true,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "X-Requested-With, content-type, Authorization",
+    },
   },
   optimization: {
+    minimize: true,
+    minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
     splitChunks: {
-      chunks: 'all',
+      chunks: "all",
       maxInitialRequests: Infinity,
       minSize: 0,
       cacheGroups: {
         vendor: {
           test: /[\\/]node_modules[\\/]/,
           name(module) {
-            const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
-            return `npm.${packageName.replace('@', '')}`;
+            const packageName = module.context.match(
+              /[\\/]node_modules[\\/](.*?)([\\/]|$)/
+            )[1];
+            return `npm.${packageName.replace("@", "")}`;
           },
         },
       },
@@ -113,21 +147,13 @@ const config = {
 
 if (isProduction) {
   config.plugins.push(
-    new MiniCssExtractPlugin({
-      filename: 'styles.[contenthash].css',
-    }),
     new PurgeCSSPlugin({
       paths: glob.sync(`${PATHS.src}/**/*`, { nodir: true }),
     })
   );
 
-  config.optimization.minimizer = [
-    new TerserPlugin(),
-    new CssMinimizerPlugin(),
-  ];
-
   config.performance = {
-    hints: 'warning',
+    hints: "warning",
     maxEntrypointSize: 512000,
     maxAssetSize: 512000,
   };

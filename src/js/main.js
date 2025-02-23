@@ -695,6 +695,23 @@ function inicializarMenuAbas() {
   tabButtons[0].click();
 }
 
+// Adicione esta nova função para auto-salvamento
+function iniciarAutoSalvamento() {
+  setInterval(() => {
+    try {
+      salvarValoresCampos();
+      salvarEstadoAplicacao();
+      console.log(
+        "Dados salvos automaticamente:",
+        new Date().toLocaleTimeString()
+      );
+    } catch (error) {
+      console.error("Erro ao salvar dados automaticamente:", error);
+    }
+  }, 1000); // Salva a cada 1 segundo
+}
+
+// Modifique o evento DOMContentLoaded para incluir o auto-salvamento
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
@@ -704,6 +721,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     inicializarMenuMobile();
     inicializarMenuAbas();
     await atualizarGrafico();
+    iniciarAutoSalvamento(); // Adicione esta linha
     console.log("Inicialização concluída com sucesso");
   } catch (error) {
     console.error("Erro durante a inicialização:", error);
