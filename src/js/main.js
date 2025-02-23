@@ -127,9 +127,11 @@ function gerarCamposEntrada() {
     containerManual.appendChild(divManual);
 
     // Adicionando o evento de clique para o botão de desfazer
-    document.getElementById(`desfazer_${bebida.id}`).addEventListener("click", () => {
-      desfazerUltimoResultado(bebida.id);
-    });
+    document
+      .getElementById(`desfazer_${bebida.id}`)
+      .addEventListener("click", () => {
+        desfazerUltimoResultado(bebida.id);
+      });
   });
 
   carregarValoresCampos();
@@ -170,8 +172,11 @@ function enviarParaCalculoManual(resultados) {
     }
   });
   salvarValoresCampos();
-  mostrarNotificacao("Resultados enviados para o cálculo manual com sucesso!", "sucesso");
-  
+  mostrarNotificacao(
+    "Resultados enviados para o cálculo manual com sucesso!",
+    "sucesso"
+  );
+
   // Criar e exibir o popup personalizado
   const popup = document.createElement("div");
   popup.innerHTML = `
@@ -241,14 +246,17 @@ function salvarEstadoManual() {
 
 function desfazerUltimoResultado(bebidaId) {
   const campo = document.getElementById(`${bebidaId}_manual`);
-  const valoresAtuais = campo.value.split(",").map((v) => v.trim()).filter((v) => v !== "");
-  
+  const valoresAtuais = campo.value
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v !== "");
+
   if (valoresAtuais.length > 0) {
     // Remove o último resultado
     valoresAtuais.pop();
     campo.value = valoresAtuais.join(", "); // Atualiza o campo com os valores restantes
     mostrarNotificacao(`Último resultado removido para ${bebidaId}`, "sucesso");
-    
+
     // Não atualizar o localStorage ou enviar dados ao banco aqui
   } else {
     mostrarNotificacao("Não há resultados para desfazer", "erro");
@@ -672,9 +680,38 @@ function iniciarAutoSalvamento() {
   }, 1000); // Salva a cada 1 segundo
 }
 
+function iniciarAutoSalvamentoManual() {
+  setInterval(() => {
+    try {
+      const valoresManual = {};
+      tiposBebidas.forEach((bebida) => {
+        const campoManual = document.getElementById(`${bebida.id}_manual`);
+        if (campoManual) {
+          valoresManual[bebida.id] = campoManual.value;
+        }
+      });
+
+      // Salvar no localStorage
+      localStorage.setItem("valoresManual", JSON.stringify(valoresManual));
+      localStorage.setItem("ultimoSalvamentoManual", new Date().toISOString());
+
+      console.log(
+        "Dados manuais salvos automaticamente:",
+        new Date().toLocaleTimeString()
+      );
+    } catch (error) {
+      console.error("Erro ao salvar dados manuais automaticamente:", error);
+    }
+  }, 1000); // Salva a cada 1 segundo
+}
+
 function carregarResultadosDoLocalStorage() {
-  const resultadosAutomaticos = JSON.parse(localStorage.getItem("automatico_resultados"));
-  const resultadosManuais = JSON.parse(localStorage.getItem("manual_resultados"));
+  const resultadosAutomaticos = JSON.parse(
+    localStorage.getItem("automatico_resultados")
+  );
+  const resultadosManuais = JSON.parse(
+    localStorage.getItem("manual_resultados")
+  );
 
   if (resultadosAutomaticos) {
     exibirResultados(resultadosAutomaticos, "automatico");
@@ -685,18 +722,32 @@ function carregarResultadosDoLocalStorage() {
   }
 }
 
+function carregarValoresManualDoLocalStorage() {
+  const valoresSalvos = JSON.parse(localStorage.getItem("valoresManual"));
+  if (valoresSalvos) {
+    tiposBebidas.forEach((bebida) => {
+      const campoManual = document.getElementById(`${bebida.id}_manual`);
+      if (campoManual && valoresSalvos[bebida.id]) {
+        campoManual.value = valoresSalvos[bebida.id];
+      }
+    });
+  }
+}
+
 // Modifique o evento DOMContentLoaded para incluir o auto-salvamento
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
     gerarCamposEntrada();
     carregarValoresDoLocalStorage(); // Carrega os valores do localStorage
+    carregarValoresManualDoLocalStorage(); // Adicione esta linha
     carregarResultadosDoLocalStorage(); // Carrega os resultados do localStorage
     inicializarEventListeners();
     inicializarMenuMobile();
     inicializarMenuAbas();
     await atualizarGrafico();
     iniciarAutoSalvamento(); // Adicione esta linha
+    iniciarAutoSalvamentoManual(); // Adicione esta linha
     console.log("Inicialização concluída com sucesso");
   } catch (error) {
     console.error("Erro durante a inicialização:", error);
