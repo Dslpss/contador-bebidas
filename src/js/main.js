@@ -169,15 +169,9 @@ function enviarParaCalculoManual(resultados) {
       }
     }
   });
-
-  // Salvar os valores no localStorage
-  salvarValoresNoLocalStorage();
-
-  mostrarNotificacao(
-    "Resultados enviados para o cálculo manual com sucesso!",
-    "sucesso"
-  );
-
+  salvarValoresCampos();
+  mostrarNotificacao("Resultados enviados para o cálculo manual com sucesso!", "sucesso");
+  
   // Criar e exibir o popup personalizado
   const popup = document.createElement("div");
   popup.innerHTML = `
@@ -651,8 +645,23 @@ function inicializarMenuAbas() {
 function iniciarAutoSalvamento() {
   setInterval(() => {
     try {
-      salvarValoresCampos();
-      salvarEstadoAplicacao();
+      const valores = {};
+
+      // Salvar valores dos campos automáticos
+      tiposBebidas.forEach((bebida) => {
+        const pacotesInput = document.getElementById(bebida.id);
+        const avulsasInput = document.getElementById(`${bebida.id}_avulsas`);
+        const manualInput = document.getElementById(`${bebida.id}_manual`);
+
+        if (pacotesInput) valores[bebida.id] = pacotesInput.value;
+        if (avulsasInput) valores[`${bebida.id}_avulsas`] = avulsasInput.value;
+        if (manualInput) valores[`${bebida.id}_manual`] = manualInput.value;
+      });
+
+      // Salvar no localStorage
+      localStorage.setItem("valoresCampos", JSON.stringify(valores));
+      localStorage.setItem("ultimoSalvamento", new Date().toISOString());
+
       console.log(
         "Dados salvos automaticamente:",
         new Date().toLocaleTimeString()
@@ -675,6 +684,8 @@ function carregarResultadosDoLocalStorage() {
     exibirResultados(resultadosManuais, "manual");
   }
 }
+
+// Modifique o evento DOMContentLoaded para incluir o auto-salvamento
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
