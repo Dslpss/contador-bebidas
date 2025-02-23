@@ -647,7 +647,6 @@ function inicializarMenuAbas() {
   tabButtons[0].click();
 }
 
-<<<<<<< HEAD
 // Adicione esta nova função para auto-salvamento
 function iniciarAutoSalvamento() {
   setInterval(() => {
@@ -664,8 +663,6 @@ function iniciarAutoSalvamento() {
   }, 1000); // Salva a cada 1 segundo
 }
 
-// Modifique o evento DOMContentLoaded para incluir o auto-salvamento
-=======
 function carregarResultadosDoLocalStorage() {
   const resultadosAutomaticos = JSON.parse(localStorage.getItem("automatico_resultados"));
   const resultadosManuais = JSON.parse(localStorage.getItem("manual_resultados"));
@@ -678,8 +675,6 @@ function carregarResultadosDoLocalStorage() {
     exibirResultados(resultadosManuais, "manual");
   }
 }
-
->>>>>>> cd9c01fd59806d8f31dd5b7c92dad7b86e2a6fab
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
