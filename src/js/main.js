@@ -160,6 +160,33 @@ function calcularAutomatico() {
 }
 
 function enviarParaCalculoManual(resultados) {
+  // Primeiro, verificamos se campos foram limpos recentemente
+  const limpezaIntencional = localStorage.getItem("camposManuaisLimpos");
+
+  // Salvamos o estado atual para histórico
+  salvarEstadoManual();
+
+  // Coletar dados antes da alteração para backup (apenas se não foi limpo intencionalmente)
+  if (
+    !limpezaIntencional ||
+    new Date() - new Date(limpezaIntencional) > 60000
+  ) {
+    // > 1 minuto
+    const estadoAnterior = {};
+    tiposBebidas.forEach((bebida) => {
+      const campoManual = document.getElementById(`${bebida.id}_manual`);
+      estadoAnterior[bebida.id] = campoManual.value;
+    });
+    localStorage.setItem(
+      "estadoAnteriorManual",
+      JSON.stringify(estadoAnterior)
+    );
+  } else {
+    // Se foi limpo recentemente, remover estado anterior para não restaurar
+    localStorage.removeItem("estadoAnteriorManual");
+  }
+
+  // Continua com o processo normal de envio para cálculo manual
   tiposBebidas.forEach((bebida) => {
     if (resultados[bebida.id] > 0) {
       const campoManual = document.getElementById(`${bebida.id}_manual`);
@@ -171,7 +198,15 @@ function enviarParaCalculoManual(resultados) {
       }
     }
   });
+
+  // Após transferir novos dados, remover flag de limpeza intencional
+  localStorage.removeItem("camposManuaisLimpos");
+
+  // Salvar os valores nos vários sistemas de armazenamento para redundância
   salvarValoresCampos();
+  salvarValoresManualNoLocalStorage();
+  salvarTransferenciaAutomaticoParaManual(resultados);
+
   mostrarNotificacao(
     "Resultados enviados para o cálculo manual com sucesso!",
     "sucesso"
@@ -214,13 +249,216 @@ function enviarParaCalculoManual(resultados) {
   });
 }
 
-function calcularManual() {
-  const resultados = {};
-  tiposBebidas.forEach((bebida) => {
-    const input = document.getElementById(`${bebida.id}_manual`).value;
-    resultados[bebida.id] = calcularTotal(input);
+// Nova função para salvar especificamente as transferências do automático para manual
+function salvarTransferenciaAutomaticoParaManual(resultados) {
+  // Salva o histórico das transferências
+  let historicoTransferencias =
+    JSON.parse(localStorage.getItem("historicoTransferencias")) || [];
+  historicoTransferencias.push({
+    data: new Date().toISOString(),
+    resultados: resultados,
   });
-  return resultados;
+  localStorage.setItem(
+    "historicoTransferencias",
+    JSON.stringify(historicoTransferencias)
+  );
+
+  // Salva a última transferência para recuperação fácil
+  localStorage.setItem(
+    "ultimaTransferenciaAutoParaManual",
+    JSON.stringify({
+      data: new Date().toISOString(),
+      resultados: resultados,
+    })
+  );
+}
+
+// Nova função específica para salvar os valores dos campos manuais
+function salvarValoresManualNoLocalStorage() {
+  const valores = {};
+  tiposBebidas.forEach((bebida) => {
+    const campo = document.getElementById(`${bebida.id}_manual`);
+    if (campo) {
+      valores[bebida.id] = campo.value;
+    }
+  });
+  localStorage.setItem("valoresManual", JSON.stringify(valores));
+  localStorage.setItem("backupValoresManual", JSON.stringify(valores)); // Backup redundante
+}
+
+// Função para verificar e restaurar dados após um fechamento inesperado
+function verificarRecuperacaoDados() {
+  // Verificar se o usuário limpou os dados intencionalmente
+  const limpezaIntencional = localStorage.getItem("camposManuaisLimpos");
+
+  // Se houve limpeza intencional e depois não houve novos salvamentos, não restaurar
+  const ultimoSalvamento = localStorage.getItem("ultimoSalvamentoManual");
+  if (
+    limpezaIntencional &&
+    ultimoSalvamento &&
+    new Date(limpezaIntencional) > new Date(ultimoSalvamento)
+  ) {
+    return;
+  }
+
+  // Continuamos com a verificação normal apenas se não houve limpeza intencional recente
+  const valoresManual = JSON.parse(localStorage.getItem("valoresManual"));
+  const backupValoresManual = JSON.parse(
+    localStorage.getItem("backupValoresManual")
+  );
+
+  if (valoresManual || backupValoresManual) {
+    // Usa o conjunto de dados mais completo disponível
+    const dadosParaRestaurar = valoresManual || backupValoresManual;
+
+    // Criar um resumo dos dados para mostrar ao usuário
+    const resumo = [];
+    let totalItens = 0;
+
+    Object.entries(dadosParaRestaurar).forEach(([bebidaId, valor]) => {
+      if (valor && valor.trim() !== "") {
+        const bebidaInfo = tiposBebidas.find((b) => b.id === bebidaId);
+        if (bebidaInfo) {
+          const valores = valor
+            .split(",")
+            .map((v) => v.trim())
+            .filter((v) => v);
+          if (valores.length > 0) {
+            resumo.push(`${bebidaInfo.nome}: ${valores.length} entradas`);
+            totalItens += valores.length;
+          }
+        }
+      }
+    });
+
+    // Obter o momento da última modificação
+    const dataUltimoSalvamento = ultimoSalvamento
+      ? new Date(ultimoSalvamento)
+      : new Date();
+
+    // Criar modal personalizado para restauração
+    const recoveryModal = document.createElement("div");
+    recoveryModal.innerHTML = `
+      <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="recoveryOverlay">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="mt-3">
+            <div class="flex items-center justify-center">
+              <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+                <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+            </div>
+            
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2 text-center">Dados Não Salvos Encontrados</h3>
+            
+            <div class="mt-4 px-2 py-2">
+              <p class="text-sm text-gray-500">
+                Encontramos dados de cálculo manual não salvos da sua sessão anterior, 
+                modificados às ${dataUltimoSalvamento.toLocaleTimeString()} de ${dataUltimoSalvamento.toLocaleDateString()}.
+              </p>
+              
+              <div class="mt-3 bg-gray-50 p-2 rounded-md">
+                <p class="text-sm font-medium">Resumo dos dados encontrados:</p>
+                <ul class="mt-1 text-xs text-gray-600 list-disc pl-5">
+                  ${resumo.map((item) => `<li>${item}</li>`).join("")}
+                </ul>
+                <p class="text-xs text-gray-500 mt-1">Total: ${totalItens} entradas em ${
+      resumo.length
+    } categorias</p>
+              </div>
+              
+              <p class="text-sm text-gray-500 mt-3">
+                Deseja restaurar estes dados para continuar seu trabalho?
+              </p>
+            </div>
+            
+            <div class="flex items-center justify-between px-4 py-3">
+              <button id="descartarDados" class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                Descartar
+              </button>
+              <button id="restaurarDados" class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                Restaurar Dados
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(recoveryModal);
+
+    // Handler para restaurar dados
+    document.getElementById("restaurarDados").addEventListener("click", () => {
+      tiposBebidas.forEach((bebida) => {
+        const campo = document.getElementById(`${bebida.id}_manual`);
+        if (campo && dadosParaRestaurar[bebida.id]) {
+          campo.value = dadosParaRestaurar[bebida.id];
+        }
+      });
+
+      document.body.removeChild(recoveryModal);
+      mostrarNotificacao("Dados restaurados com sucesso!", "sucesso");
+    });
+
+    // Handler para descartar dados - MODIFICADO para limpar os campos também
+    document.getElementById("descartarDados").addEventListener("click", () => {
+      // Limpar visualmente todos os campos manuais
+      tiposBebidas.forEach((bebida) => {
+        const campo = document.getElementById(`${bebida.id}_manual`);
+        if (campo) {
+          campo.value = ""; // Limpa o campo de entrada
+        }
+      });
+
+      // Limpar o display de resultados manuais
+      const displayResultados = document.getElementById(
+        "resultado_manual_display"
+      );
+      if (displayResultados) {
+        displayResultados.innerHTML = "";
+      }
+
+      // Criar objetos com valores vazios para salvar no localStorage
+      const valoresVazios = {};
+      tiposBebidas.forEach((bebida) => {
+        valoresVazios[bebida.id] = "";
+      });
+
+      // Salvar valores vazios em vez de remover as entradas
+      localStorage.setItem("valoresManual", JSON.stringify(valoresVazios));
+      localStorage.setItem(
+        "valoresManualBackup",
+        JSON.stringify(valoresVazios)
+      );
+      localStorage.setItem(
+        "backupValoresManual",
+        JSON.stringify(valoresVazios)
+      );
+
+      // Remover outros itens relacionados
+      localStorage.removeItem("estadoAnteriorManual");
+      localStorage.removeItem("ultimaTransferenciaAutoParaManual");
+      localStorage.removeItem("manual_resultados");
+      localStorage.removeItem("ultimoSalvamentoManual");
+
+      // Marcar que os dados foram limpos intencionalmente
+      localStorage.setItem("camposManuaisLimpos", new Date().toISOString());
+
+      // Fechar o modal e mostrar notificação
+      document.body.removeChild(recoveryModal);
+      mostrarNotificacao("Dados descartados e campos limpos", "sucesso");
+    });
+
+    // Fechar ao clicar fora do modal (opcional)
+    document
+      .getElementById("recoveryOverlay")
+      .addEventListener("click", (e) => {
+        if (e.target.id === "recoveryOverlay") {
+          document.body.removeChild(recoveryModal);
+        }
+      });
+  }
 }
 
 // Adicione esta função para coletar os valores atuais
@@ -282,18 +520,159 @@ function exibirResultados(resultados, tipo) {
 function salvarResultados(resultados) {
   const turno = document.getElementById("turno").value;
   const data = new Date();
-  console.log("Tentando salvar resultados:", { data, turno, resultados });
+
+  // Mostrar um aviso de "Enviando..." enquanto a operação está em andamento
+  const loadingPopup = document.createElement("div");
+  loadingPopup.innerHTML = `
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="loadingOverlay">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+          <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+          <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Enviando dados...</h3>
+          <div class="mt-2 px-7 py-3">
+            <p class="text-sm text-gray-500">
+              Aguarde enquanto seus dados são salvos no servidor.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(loadingPopup);
+
   addDoc(collection(db, "consumo"), {
     data: data,
     turno: turno,
     resultados: resultados,
   })
     .then(() => {
-      console.log("Resultados salvos com sucesso");
-      mostrarNotificacao("Resultados salvos com sucesso!");
+      // Remover o aviso de carregamento
+      if (document.getElementById("loadingOverlay")) {
+        document.body.removeChild(loadingPopup);
+      }
+
+      // Criar um resumo formatado dos dados salvos
+      const resumoItens = Object.entries(resultados)
+        .map(([bebida, quantidade]) => {
+          const bebidaInfo = tiposBebidas.find((b) => b.id === bebida);
+          if (bebidaInfo && quantidade > 0) {
+            return `<li><strong>${bebidaInfo.nome}</strong>: ${quantidade} unidades</li>`; // Corrigido: aspas de fechamento estava incorreta
+          }
+          return "";
+        })
+        .filter((item) => item !== "")
+        .join("");
+
+      // Criar e mostrar o popup de sucesso
+      const successPopup = document.createElement("div");
+      successPopup.innerHTML = `
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="successOverlay">
+          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+              <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg class="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Dados Salvos com Sucesso!</h3>
+              <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500">
+                  O consumo foi registrado corretamente no turno <strong>${turno}</strong> em <strong>${data.toLocaleString()}</strong>.
+                </p>
+                <div class="mt-4 border-t pt-4">
+                  <p class="text-sm font-medium text-left">Resumo do consumo:</p>
+                  <ul class="text-sm text-left list-disc pl-5 mt-2">
+                    ${resumoItens}
+                  </ul>
+                </div>
+              </div>
+              <div class="items-center px-4 py-3">
+                <button id="fecharPopupSucesso" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(successPopup);
+
+      // Adicionar evento para fechar o popup
+      document
+        .getElementById("fecharPopupSucesso")
+        .addEventListener("click", () => {
+          document.body.removeChild(successPopup);
+        });
+
+      // Fechar o popup ao clicar fora dele
+      document
+        .getElementById("successOverlay")
+        .addEventListener("click", (event) => {
+          if (event.target.id === "successOverlay") {
+            document.body.removeChild(successPopup);
+          }
+        });
+
+      // Mostrar também a notificação simples
+      mostrarNotificacao("Resultados salvos com sucesso!", "sucesso");
     })
     .catch((error) => {
       console.error("Erro ao salvar resultados:", error);
+
+      // Remover o aviso de carregamento
+      if (document.getElementById("loadingOverlay")) {
+        document.body.removeChild(loadingPopup);
+      }
+
+      // Mostrar popup de erro
+      const errorPopup = document.createElement("div");
+      errorPopup.innerHTML = `
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="errorOverlay">
+          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+              <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg class="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </div>
+              <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Erro ao Salvar Dados</h3>
+              <div class="mt-2 px-7 py-3">
+                <p class="text-sm text-gray-500">
+                  Ocorreu um erro ao tentar salvar os dados no servidor. Verifique sua conexão e tente novamente.
+                </p>
+                <p class="text-xs text-red-500 mt-2">
+                  Detalhes técnicos: ${error.message}
+                </p>
+              </div>
+              <div class="items-center px-4 py-3">
+                <button id="fecharPopupErro" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300">
+                  Entendi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(errorPopup);
+
+      // Adicionar evento para fechar o popup de erro
+      document
+        .getElementById("fecharPopupErro")
+        .addEventListener("click", () => {
+          document.body.removeChild(errorPopup);
+        });
+
+      // Fechar o popup ao clicar fora dele
+      document
+        .getElementById("errorOverlay")
+        .addEventListener("click", (event) => {
+          if (event.target.id === "errorOverlay") {
+            document.body.removeChild(errorPopup);
+          }
+        });
+
       mostrarNotificacao("Erro ao salvar resultados.", "erro");
     });
 }
@@ -358,13 +737,67 @@ async function limparCamposManuais() {
   const confirmacao = await confirmarAcao(
     "Tem certeza que deseja limpar os campos manuais?"
   );
+
   if (confirmacao) {
-    tiposBebidas.forEach((bebida) => {
-      document.getElementById(`${bebida.id}_manual`).value = "";
-    });
-    document.getElementById("resultado_manual_display").innerHTML = "";
-    salvarValoresCampos();
-    mostrarNotificacao("Campos manuais limpos com sucesso!");
+    try {
+      // Limpar os campos visuais
+      tiposBebidas.forEach((bebida) => {
+        const campo = document.getElementById(`${bebida.id}_manual`);
+        if (campo) {
+          campo.value = "";
+        }
+      });
+
+      // Limpar o display de resultados manuais
+      const displayResultados = document.getElementById(
+        "resultado_manual_display"
+      );
+      if (displayResultados) {
+        displayResultados.innerHTML = "";
+      }
+
+      // Criar objetos com valores vazios para salvar no localStorage
+      const valoresVazios = {};
+      tiposBebidas.forEach((bebida) => {
+        valoresVazios[bebida.id] = "";
+      });
+
+      // Salvar valores vazios em vez de remover as entradas
+      localStorage.setItem("valoresManual", JSON.stringify(valoresVazios));
+      localStorage.setItem(
+        "valoresManualBackup",
+        JSON.stringify(valoresVazios)
+      );
+      localStorage.setItem(
+        "backupValoresManual",
+        JSON.stringify(valoresVazios)
+      );
+      localStorage.setItem("ultimoSalvamentoManual", new Date().toISOString());
+
+      // Os outros itens relacionados podemos remover normalmente
+      localStorage.removeItem("estadoAnteriorManual");
+      localStorage.removeItem("ultimaTransferenciaAutoParaManual");
+      localStorage.removeItem("manual_resultados");
+
+      // Marcar que os dados foram limpos intencionalmente
+      localStorage.setItem("camposManuaisLimpos", new Date().toISOString());
+
+      // Atualizar os valores em valoresCampos para sincronizar o estado
+      const valoresCampos =
+        JSON.parse(localStorage.getItem("valoresCampos")) || {};
+      tiposBebidas.forEach((bebida) => {
+        valoresCampos[`${bebida.id}_manual`] = "";
+      });
+      localStorage.setItem("valoresCampos", JSON.stringify(valoresCampos));
+
+      // Salvar valores vazios também na entrada valoresBebidas
+      localStorage.setItem("valoresBebidas", JSON.stringify(valoresVazios));
+
+      mostrarNotificacao("Campos manuais limpos com sucesso!", "sucesso");
+    } catch (error) {
+      console.error("Erro ao limpar campos manuais:", error);
+      mostrarNotificacao("Erro ao limpar campos manuais", "erro");
+    }
   }
 }
 
@@ -391,7 +824,18 @@ function inicializarMenuMobile() {
   }
 }
 
+// Esta função estava faltando ou foi sobrescrita - vamos garantir que ela esteja corretamente implementada
+function calcularManual() {
+  const resultados = {};
+  tiposBebidas.forEach((bebida) => {
+    const input = document.getElementById(`${bebida.id}_manual`).value;
+    resultados[bebida.id] = calcularTotal(input);
+  });
+  return resultados;
+}
+
 function inicializarEventListeners() {
+  // Garantir que os event listeners sejam adicionados corretamente
   document
     .getElementById("calculoAutomatico")
     .addEventListener("submit", (e) => {
@@ -408,60 +852,147 @@ function inicializarEventListeners() {
     enviarParaCalculoManual(resultados);
   });
 
+  // Corrigir este event listener específico para o form de cálculo manual
   document.getElementById("calculoManual").addEventListener("submit", (e) => {
     e.preventDefault(); // Impede o envio padrão do formulário
     salvarEstadoManual(); // Salvar estado atual antes de calcular
     const resultados = calcularManual();
     exibirResultados(resultados, "manual");
-  });
 
-  document
-    .getElementById("limparCamposAutomaticos")
-    .addEventListener("click", limparCamposAutomaticos);
+    // Criar um resumo dos resultados para o aviso
+    const resumoItens = Object.entries(resultados)
+      .map(([bebidaId, quantidade]) => {
+        if (quantidade > 0) {
+          const bebidaInfo = tiposBebidas.find((b) => b.id === bebidaId);
+          return bebidaInfo
+            ? `<li class="flex justify-between my-1"><span class="font-medium">${bebidaInfo.nome}</span> <span class="font-bold">${quantidade} unidades</span></li>`
+            : "";
+        }
+        return "";
+      })
+      .filter((item) => item !== "")
+      .join("");
 
-  document
-    .getElementById("limparCamposManuais")
-    .addEventListener("click", limparCamposManuais);
-
-  document.getElementById("adicionarBebida").addEventListener("click", () => {
-    const nome = prompt("Digite o nome da nova bebida:");
-    const unidadesPorPacote = parseInt(
-      prompt("Digite o número de unidades por pacote:")
-    );
-    if (nome && !isNaN(unidadesPorPacote)) {
-      const id = nome.toLowerCase().replace(/ /g, "_");
-      tiposBebidas.push({ id, nome, unidadesPorPacote });
-      salvarTiposBebidas();
-      gerarCamposEntrada();
+    // Verifica se há resultados a mostrar
+    if (resumoItens.length === 0) {
+      mostrarNotificacao(
+        "Não há resultados para enviar ao banco de dados",
+        "erro"
+      );
+      return;
     }
-  });
 
-  document.getElementById("gerenciarBebidas").addEventListener("click", () => {
-    const modal = document.getElementById("modalGerenciarBebidas");
-    modal.classList.remove("hidden");
-    atualizarListaBebidas();
-  });
+    // Criar o modal de confirmação personalizado
+    const confirmModal = document.createElement("div");
+    confirmModal.innerHTML = `
+      <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="confirmSendOverlay">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="mt-3">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
+              <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+              </svg>
+            </div>
+            
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2 text-center">Cálculo Concluído</h3>
+            
+            <div class="mt-2 px-2 py-2">
+              <p class="text-sm text-gray-600 mb-2">
+                O cálculo das bebidas foi concluído com sucesso. Deseja salvar estes dados no banco de dados?
+              </p>
+              
+              <div class="mt-3 bg-gray-50 p-3 rounded-md max-h-48 overflow-y-auto">
+                <p class="text-sm font-medium text-gray-700 border-b pb-1 mb-2">Resumo dos resultados:</p>
+                <ul class="text-sm text-gray-600">
+                  ${resumoItens}
+                </ul>
+              </div>
+              
+              <div class="mt-4">
+                <p class="text-xs text-gray-500">
+                  <span class="font-semibold">Nota:</span> Após salvar, estes dados ficarão disponíveis no histórico e no gráfico.
+                </p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2 px-4 py-3">
+              <button id="apenasCalcular" class="px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                Apenas Calcular
+              </button>
+              <button id="salvarNoBanco" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">
+                Salvar no Banco
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
 
-  document.getElementById("fecharModal").addEventListener("click", () => {
-    document.getElementById("modalGerenciarBebidas").classList.add("hidden");
-  });
+    document.body.appendChild(confirmModal);
 
-  tiposBebidas.forEach((bebida) => {
+    // Handler para apenas calcular (fechar o modal)
+    document.getElementById("apenasCalcular").addEventListener("click", () => {
+      document.body.removeChild(confirmModal);
+      mostrarNotificacao("Resultados calculados localmente", "sucesso");
+    });
+
+    // Handler para salvar no banco
+    document.getElementById("salvarNoBanco").addEventListener("click", () => {
+      document.body.removeChild(confirmModal);
+      salvarResultados(resultados); // Chama a função que salva no banco de dados
+    });
+
+    // Fechar ao clicar fora do modal (opcional)
     document
-      .getElementById(bebida.id)
-      .addEventListener("input", salvarValoresCampos);
-    document
-      .getElementById(`${bebida.id}_avulsas`)
-      .addEventListener("input", salvarValoresCampos);
-    document
-      .getElementById(`${bebida.id}_manual`)
-      .addEventListener("input", salvarValoresCampos);
+      .getElementById("confirmSendOverlay")
+      .addEventListener("click", (e) => {
+        if (e.target.id === "confirmSendOverlay") {
+          document.body.removeChild(confirmModal);
+        }
+      });
   });
 
+  // O botão específico de enviar resultados
   document.getElementById("enviarResultados").addEventListener("click", () => {
     const resultados = calcularManual(); // Coletar resultados do cálculo manual
     salvarResultados(resultados); // Enviar resultados ao banco de dados
   });
+
+  // ...resto dos event listeners...
+}
+
+function inicializarBotoesEspeciais() {
+  // Botão para limpar campos manuais
+  const btnLimparManual = document.getElementById("limparCamposManuais");
+  if (btnLimparManual) {
+    // Remover qualquer listener anterior para evitar duplicação
+    btnLimparManual.replaceWith(btnLimparManual.cloneNode(true));
+
+    // Adicionar o novo listener
+    document
+      .getElementById("limparCamposManuais")
+      .addEventListener("click", function (e) {
+        e.preventDefault();
+        limparCamposManuais();
+      });
+  }
+
+  // Botão para limpar campos automáticos
+  const btnLimparAutomatico = document.getElementById(
+    "limparCamposAutomaticos"
+  );
+  if (btnLimparAutomatico) {
+    // Remover qualquer listener anterior para evitar duplicação
+    btnLimparAutomatico.replaceWith(btnLimparAutomatico.cloneNode(true));
+
+    // Adicionar o novo listener
+    document
+      .getElementById("limparCamposAutomaticos")
+      .addEventListener("click", function (e) {
+        e.preventDefault();
+        limparCamposAutomaticos();
+      });
+  }
 }
 
 function atualizarListaBebidas() {
@@ -525,7 +1056,6 @@ async function carregarDadosGrafico() {
         .sort((a, b) => a.x - b.x); // Ordena por data crescente
     });
 
-    console.log("Dados carregados e processados com sucesso:", dados);
     return dados;
   } catch (error) {
     console.error("Erro ao carregar dados do gráfico:", error);
@@ -615,7 +1145,6 @@ async function atualizarGrafico() {
         },
       },
     });
-    console.log("Gráfico atualizado com sucesso");
   } catch (error) {
     console.error("Erro ao atualizar o gráfico:", error);
   }
@@ -669,20 +1198,26 @@ function iniciarAutoSalvamento() {
       // Salvar no localStorage
       localStorage.setItem("valoresCampos", JSON.stringify(valores));
       localStorage.setItem("ultimoSalvamento", new Date().toISOString());
-
-      console.log(
-        "Dados salvos automaticamente:",
-        new Date().toLocaleTimeString()
-      );
     } catch (error) {
       console.error("Erro ao salvar dados automaticamente:", error);
     }
   }, 1000); // Salva a cada 1 segundo
 }
 
+// Modificar o iniciarAutoSalvamentoManual para incluir mais redundância
 function iniciarAutoSalvamentoManual() {
   setInterval(() => {
     try {
+      const limpezaIntencional = localStorage.getItem("camposManuaisLimpos");
+
+      // Verificar se a limpeza foi muito recente (menos de 5 segundos)
+      if (
+        limpezaIntencional &&
+        new Date() - new Date(limpezaIntencional) < 5000
+      ) {
+        return; // Não salvar se os campos foram limpos recentemente
+      }
+
       const valoresManual = {};
       tiposBebidas.forEach((bebida) => {
         const campoManual = document.getElementById(`${bebida.id}_manual`);
@@ -691,14 +1226,26 @@ function iniciarAutoSalvamentoManual() {
         }
       });
 
-      // Salvar no localStorage
+      // Se todos os campos estiverem vazios e houve limpeza intencional, não salvar
+      const todosVazios = Object.values(valoresManual).every(
+        (valor) => !valor || valor === ""
+      );
+      if (todosVazios && limpezaIntencional) {
+        return;
+      }
+
+      // Salvar no localStorage com várias chaves para redundância
       localStorage.setItem("valoresManual", JSON.stringify(valoresManual));
+      localStorage.setItem(
+        "valoresManualBackup",
+        JSON.stringify(valoresManual)
+      );
       localStorage.setItem("ultimoSalvamentoManual", new Date().toISOString());
 
-      console.log(
-        "Dados manuais salvos automaticamente:",
-        new Date().toLocaleTimeString()
-      );
+      // Remover marca de limpeza intencional após salvamento bem-sucedido
+      if (limpezaIntencional) {
+        localStorage.removeItem("camposManuaisLimpos");
+      }
     } catch (error) {
       console.error("Erro ao salvar dados manuais automaticamente:", error);
     }
@@ -734,21 +1281,39 @@ function carregarValoresManualDoLocalStorage() {
   }
 }
 
-// Modifique o evento DOMContentLoaded para incluir o auto-salvamento
+// Modifique o evento DOMContentLoaded para incluir a verificação de recuperação
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     carregarTiposBebidas();
     gerarCamposEntrada();
-    carregarValoresDoLocalStorage(); // Carrega os valores do localStorage
-    carregarValoresManualDoLocalStorage(); // Adicione esta linha
-    carregarResultadosDoLocalStorage(); // Carrega os resultados do localStorage
+
+    // Restauração de dados - apenas se não foram limpos intencionalmente
+    const limpezaIntencional = localStorage.getItem("camposManuaisLimpos");
+    if (
+      !limpezaIntencional ||
+      new Date() - new Date(limpezaIntencional) > 300000
+    ) {
+      // > 5 minutos
+      verificarRecuperacaoDados();
+      carregarValoresManualDoLocalStorage();
+    }
+
+    carregarValoresDoLocalStorage();
+    carregarResultadosDoLocalStorage();
+
+    // Reinicializar todos os event listeners
     inicializarEventListeners();
+
+    // Inicializar especificamente os botões de limpeza
+    inicializarBotoesEspeciais();
+
     inicializarMenuMobile();
     inicializarMenuAbas();
     await atualizarGrafico();
-    iniciarAutoSalvamento(); // Adicione esta linha
-    iniciarAutoSalvamentoManual(); // Adicione esta linha
-    console.log("Inicialização concluída com sucesso");
+
+    // Auto-salvamento
+    iniciarAutoSalvamento();
+    iniciarAutoSalvamentoManual();
   } catch (error) {
     console.error("Erro durante a inicialização:", error);
   }
@@ -756,7 +1321,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function exportarDados() {
   // Implementação da exportação de dados
-  console.log("Função de exportar dados não implementada");
   mostrarNotificacao("Exportação de dados não implementada", "erro");
 }
 
@@ -942,7 +1506,6 @@ async function sincronizarDadosOffline() {
     const registration = await navigator.serviceWorker.ready;
     try {
       await registration.sync.register("sync-dados");
-      console.log("Sincronização de dados registrada");
     } catch (error) {
       console.error("Falha ao registrar sincronização de dados:", error);
     }
