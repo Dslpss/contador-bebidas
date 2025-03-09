@@ -463,8 +463,7 @@ select:focus {
 
 /* Ajuste para botões específicos */
 .w-full.inline-flex.justify-center.py-2.px-4.border.border-gray-300 {
-  color: #333; /* Texto escuro para botões com fundo claro */
-  background-color: #e1e1e1;
+  /* Esta regra está sendo substituída pelas regras específicas acima */
 }
 
 /* Adicionar regras específicas para os popups de confirmação */
@@ -559,4 +558,17 @@ select:focus {
 .fixed.inset-0 p,
 .fixed.inset-0 li {
   color: var(--text-light);
+}
+
+/* Ajustes específicos para botões de limpeza */
+#limparCamposAutomaticos {
+  background-color: var(--secondary-color);
+  color: var(--text-light);
+  border: 1px solid var(--primary-color); /* Adiciona uma borda vermelha */
+  border-color: rgba(229, 62, 62, 0.5); /* Borda vermelha com transparência */
+}
+
+#limparCamposAutomaticos:hover {
+  background-color: var(--secondary-dark);
+  border-color: var(--primary-color); /* Borda fica mais visível no hover */
 }
