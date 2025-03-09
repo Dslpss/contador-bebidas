@@ -6,13 +6,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Dashboard de Bebidas</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.0/chartjs-plugin-zoom.min.js"></script>
-
-    <link rel="stylesheet" href="/src/css/styles.css" />
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon" />
   </head>
   <body class="min-h-screen gradient-bg">
     <div id="notification" class="notification" role="alert"></div>
@@ -53,7 +50,7 @@
         id="sidebar"
         class="hidden md:flex md:flex-shrink-0 transition-all duration-300 ease-in-out">
         <div class="flex flex-col w-64">
-          <div class="flex flex-col h-0 flex-1 bg-gray-800">
+          <div class="flex flex-col h-0 flex-1 bg-secondary">
             <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <div class="flex items-center flex-shrink-0 px-4">
                 <h1 class="text-white text-2xl font-bold">Bebidas</h1>
@@ -94,7 +91,7 @@
           class="flex-1 relative overflow-y-auto focus:outline-none p-4 md:p-6">
           <div
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 dashboard-grid">
-            <div class="dashboard-card p-6 bg-white bg-opacity-80">
+            <div class="dashboard-card p-6 bg-card-light bg-opacity-80">
               <h2 class="text-2xl font-semibold mb-4 text-primary">
                 Cálculo Automático
               </h2>
@@ -102,7 +99,7 @@
                 <div class="mb-4">
                   <label
                     for="turno"
-                    class="block text-sm font-medium text-gray-700"
+                    class="block text-sm font-medium text-text-light"
                     >Turno</label
                   >
                   <select
@@ -129,7 +126,7 @@
                   <button
                     type="button"
                     id="limparCamposAutomaticos"
-                    class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-secondary bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Limpar Campos Automáticos
                   </button>
                 </div>
@@ -139,7 +136,7 @@
                 class="mt-6 bg-white p-4 rounded-md shadow"></div>
             </div>
 
-            <div class="dashboard-card p-6 bg-white bg-opacity-80">
+            <div class="dashboard-card p-6 bg-card-light bg-opacity-80">
               <h2 class="text-2xl font-semibold mb-4 text-primary">
                 Cálculo Manual
               </h2>
@@ -173,7 +170,7 @@
                 class="mt-6 bg-white p-4 rounded-md shadow"></div>
             </div>
 
-            <div class="dashboard-card p-6 bg-white bg-opacity-80">
+            <div class="dashboard-card p-6 bg-card-light bg-opacity-80">
               <h2 class="text-2xl font-semibold mb-4 text-primary">
                 Consumo de Bebidas
               </h2>
@@ -208,15 +205,15 @@
 
     <div
       id="modalGerenciarBebidas"
-      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden"
+      class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full hidden"
       aria-labelledby="modal-title"
       role="dialog"
       aria-modal="true">
       <div
-        class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card-light text-text-light">
         <div class="mt-3 text-center">
           <h3
-            class="text-lg leading-6 font-medium text-gray-900"
+            class="text-lg leading-6 font-medium text-text-light"
             id="modal-title">
             Gerenciar Bebidas
           </h3>
@@ -237,9 +234,8 @@
       </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.0/chartjs-plugin-zoom.min.js"></script>
-    <script type="module" src="/src/js/main.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
   </body>
 </html>

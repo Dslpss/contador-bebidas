@@ -15,6 +15,7 @@ import Chart from "chart.js/auto";
 import "chartjs-adapter-date-fns";
 import zoomPlugin from "chartjs-plugin-zoom";
 
+// Registre o plugin zoom após importar Chart
 Chart.register(zoomPlugin);
 
 // Inicialize o Firebase
@@ -93,7 +94,7 @@ function gerarCamposEntrada() {
     divAutomatico.className = "grid grid-cols-2 gap-4 mb-4";
     divAutomatico.innerHTML = `
       <div>
-        <label for="${bebida.id}" class="block text-sm font-medium text-gray-700">${bebida.nome} (Pacotes)</label>
+        <label for="${bebida.id}" class="block text-sm font-medium text-text-light">${bebida.nome} (Pacotes)</label>
         <div class="mt-1 relative rounded-md shadow-sm">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <i class="fas fa-box text-gray-400"></i>
@@ -102,7 +103,7 @@ function gerarCamposEntrada() {
         </div>
       </div>
       <div>
-        <label for="${bebida.id}_avulsas" class="block text-sm font-medium text-gray-700">${bebida.nome} (Avulsas)</label>
+        <label for="${bebida.id}_avulsas" class="block text-sm font-medium text-text-light">${bebida.nome} (Avulsas)</label>
         <div class="mt-1 relative rounded-md shadow-sm">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <i class="fas fa-wine-bottle text-gray-400"></i>
@@ -116,7 +117,7 @@ function gerarCamposEntrada() {
     const divManual = document.createElement("div");
     divManual.className = "mb-4";
     divManual.innerHTML = `
-      <label for="${bebida.id}_manual" class="block text-sm font-medium text-gray-700">${bebida.nome}</label>
+      <label for="${bebida.id}_manual" class="block text-sm font-medium text-text-light">${bebida.nome}</label>
       <div class="flex items-center">
         <input type="text" id="${bebida.id}_manual" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Valores separados por vírgula">
         <button id="desfazer_${bebida.id}" class="ml-2 inline-flex items-center px-2 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
@@ -216,11 +217,11 @@ function enviarParaCalculoManual(resultados) {
   const popup = document.createElement("div");
   popup.innerHTML = `
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="popupOverlay">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card-light">
         <div class="mt-3 text-center">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">Resultados Transferidos</h3>
+          <h3 class="text-lg leading-6 font-medium text-text-light">Resultados Transferidos</h3>
           <div class="mt-2 px-7 py-3">
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-text-light">
               Os resultados foram transferidos para o cálculo manual. Você pode ajustá-los conforme necessário.
             </p>
           </div>
@@ -693,7 +694,7 @@ function confirmarAcao(mensagem) {
     "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 
   const dialog = document.createElement("div");
-  dialog.className = "bg-white p-6 rounded-lg shadow-xl";
+  dialog.className = "bg-card-light p-6 rounded-lg shadow-xl text-text-light";
   dialog.innerHTML = `
     <p class="mb-4">${mensagem}</p>
     <div class="flex justify-end space-x-2">
@@ -1480,11 +1481,12 @@ function otimizarDesempenho() {
 
 otimizarDesempenho();
 
+// Modifique a função implementarPWA para usar o caminho correto do Service Worker
 function implementarPWA() {
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker
-        .register("/src/js/service-worker.js", { scope: "/" })
+        .register("/service-worker.js") // Caminho atualizado
         .then((registration) => {
           console.log(
             "Service Worker registrado com sucesso:",

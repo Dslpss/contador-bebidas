@@ -6,138 +6,121 @@ const TerserPlugin = require("terser-webpack-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const { PurgeCSSPlugin } = require("purgecss-webpack-plugin");
 const glob = require("glob");
-const CopyWebpackPlugin = require("copy-webpack-plugin"); // Adicionado
+const CopyWebpackPlugin = require("copy-webpack-plugin");
+const Dotenv = require("dotenv-webpack");
 require("dotenv").config();
 
 const PATHS = {
   src: path.join(__dirname, "src"),
 };
 
-const isProduction = process.env.NODE_ENV === "production";
+module.exports = (env, argv) => {
+  const isProduction = argv.mode === "production";
 
-const config = {
-  mode: process.env.NODE_ENV || "development",
-  entry: {
-    main: "./src/js/main.js",
-    relatorio: "./src/js/relatorio.js",
-    resultados: "./src/js/resultados.js",
-  },
-
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "[name].[contenthash].js",
-    publicPath: "/",
-    clean: true,
-  },
-  module: {
-    rules: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: "babel-loader",
-          options: {
-            presets: ["@babel/preset-env"],
-            plugins: ["@babel/plugin-syntax-dynamic-import"],
-          },
-        },
-      },
-      {
-        test: /\.css$/,
-        use: [
-          MiniCssExtractPlugin.loader,
-          {
-            loader: "css-loader",
+  return {
+    mode: argv.mode || "development",
+    entry: {
+      main: "./src/js/main.js",
+      relatorio: "./src/js/relatorio.js",
+      resultados: "./src/js/resultados.js",
+    },
+    output: {
+      path: path.resolve(__dirname, "dist"),
+      filename: "[name].[contenthash].js",
+      publicPath: "/",
+      clean: true,
+    },
+    module: {
+      rules: [
+        {
+          test: /\.js$/,
+          exclude: /node_modules/,
+          use: {
+            loader: "babel-loader",
             options: {
-              importLoaders: 1,
+              presets: ["@babel/preset-env"],
+              plugins: ["@babel/plugin-syntax-dynamic-import"],
             },
           },
-          "postcss-loader",
-        ],
-      },
-    ],
-  },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: "./src/pages/index.html",
-      filename: "index.html",
-      chunks: ["main"],
-    }),
-    new HtmlWebpackPlugin({
-      template: "./src/pages/relatorio.html",
-      filename: "relatorio.html",
-      chunks: ["relatorio"],
-    }),
-    new HtmlWebpackPlugin({
-      template: "./src/pages/resultados.html",
-      filename: "resultados.html",
-      chunks: ["resultados"],
-    }),
-    new MiniCssExtractPlugin({
-      filename: "css/[name].[contenthash].css",
-    }),
-    new webpack.DefinePlugin({
-      "process.env": JSON.stringify(process.env),
-    }),
-    new CopyWebpackPlugin({
-      // Adicionado
-      patterns: [
+        },
         {
-          from: path.resolve(__dirname, "src", "js", "service-worker.js"),
-          to: "service-worker.js",
+          test: /\.css$/,
+          use: [
+            isProduction ? MiniCssExtractPlugin.loader : "style-loader",
+            "css-loader",
+            "postcss-loader",
+          ],
         },
       ],
-    }),
-  ],
-  devServer: {
-    static: {
-      directory: path.join(__dirname, "dist"),
     },
-    compress: true,
-    port: 9000,
-    hot: true,
-    historyApiFallback: true,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers":
-        "X-Requested-With, content-type, Authorization",
+    plugins: [
+      new HtmlWebpackPlugin({
+        template: "./src/pages/index.html",
+        filename: "index.html",
+        chunks: ["main"],
+      }),
+      new HtmlWebpackPlugin({
+        template: "./src/pages/relatorio.html",
+        filename: "relatorio.html",
+        chunks: ["relatorio"],
+      }),
+      new HtmlWebpackPlugin({
+        template: "./src/pages/resultados.html",
+        filename: "resultados.html",
+        chunks: ["resultados"],
+      }),
+      new MiniCssExtractPlugin({
+        filename: isProduction
+          ? "css/[name].[contenthash].css"
+          : "css/[name].css",
+      }),
+      new Dotenv(),
+      new CopyWebpackPlugin({
+        patterns: [
+          {
+            from: path.resolve(__dirname, "src", "js", "service-worker.js"),
+            to: path.resolve(__dirname, "dist"),
+          },
+          {
+            from: path.resolve(__dirname, "src", "assets"),
+            to: path.resolve(__dirname, "dist", "assets"),
+            noErrorOnMissing: true,
+          },
+        ],
+      }),
+    ],
+    devServer: {
+      static: {
+        directory: path.join(__dirname, "dist"),
+      },
+      compress: true,
+      port: 9000,
+      hot: true,
+      historyApiFallback: true,
     },
-  },
-  optimization: {
-    minimize: true,
-    minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
-    splitChunks: {
-      chunks: "all",
-      maxInitialRequests: Infinity,
-      minSize: 0,
-      cacheGroups: {
-        vendor: {
-          test: /[\\/]node_modules[\\/]/,
-          name(module) {
-            const packageName = module.context.match(
-              /[\\/]node_modules[\\/](.*?)([\\/]|$)/
-            )[1];
-            return `npm.${packageName.replace("@", "")}`;
+    optimization: {
+      minimize: isProduction,
+      minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
+      splitChunks: {
+        chunks: "all",
+        maxInitialRequests: Infinity,
+        minSize: 0,
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name(module) {
+              const packageName = module.context.match(
+                /[\\/]node_modules[\\/](.*?)([\\/]|$)/
+              )[1];
+              return `npm.${packageName.replace("@", "")}`;
+            },
           },
         },
       },
     },
-  },
-};
-
-if (isProduction) {
-  config.plugins.push(
-    new PurgeCSSPlugin({
-      paths: glob.sync(`${PATHS.src}/**/*`, { nodir: true }),
-    })
-  );
-
-  config.performance = {
-    hints: "warning",
-    maxEntrypointSize: 512000,
-    maxAssetSize: 512000,
+    resolve: {
+      extensions: [".js", ".json"],
+    },
+    devtool: isProduction ? "source-map" : "eval-source-map",
   };
-}
-
-module.exports = config;
+};
