@@ -1,5 +1,6 @@
 import { firebaseConfig } from "./config";
 import "../css/styles.css";
+// Importar apenas os módulos Firebase necessários
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -11,24 +12,41 @@ import {
   deleteDoc,
   where,
 } from "firebase/firestore";
-import Chart from "chart.js/auto";
-import "chartjs-adapter-date-fns";
-import zoomPlugin from "chartjs-plugin-zoom";
 
-// Registre o plugin zoom após importar Chart
-Chart.register(zoomPlugin);
+// Implementar lazy loading para Chart.js
+let Chart, zoomPlugin;
+const loadChartModules = async () => {
+  const chartModule = await import(
+    /* webpackChunkName: "chart" */ "chart.js/auto"
+  );
+  const dateAdapterModule = await import(
+    /* webpackChunkName: "chart-date-adapter" */ "chartjs-adapter-date-fns"
+  );
+  const zoomPluginModule = await import(
+    /* webpackChunkName: "chart-zoom" */ "chartjs-plugin-zoom"
+  );
+  Chart = chartModule.default;
+  zoomPlugin = zoomPluginModule.default;
+  Chart.register(zoomPlugin);
+  return Chart;
+};
 
-// Inicialize o Firebase
+// Inicialização Firebase com atraso proposital
 let app, db;
-try {
-  app = initializeApp(firebaseConfig);
-  console.log("Firebase inicializado com sucesso:", app);
-  db = getFirestore(app);
-  console.log("Firestore inicializado:", db);
-} catch (error) {
-  console.error("Erro ao inicializar o Firebase:", error);
-}
+const initializeFirebase = () => {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log("Firebase inicializado");
+  } catch (error) {
+    console.error("Erro ao inicializar o Firebase:", error);
+  }
+};
 
+// Adiar inicialização Firebase para melhorar carregamento inicial
+setTimeout(initializeFirebase, 1000);
+
+// Configurar variables globais com valores padrão
 let tiposBebidas = [
   { id: "latas", nome: "Latas", unidadesPorPacote: 6 },
   { id: "aguas", nome: "Águas", unidadesPorPacote: 6 },
@@ -41,6 +59,20 @@ let tiposBebidas = [
 ];
 
 let historicoManual = [];
+let graficoConsumo; // Variável global para armazenar a instância do gráfico
+let chartInitialized = false;
+
+// Carrega os dados necessários apenas quando necessário
+function carregarDadosIniciais() {
+  carregarTiposBebidas();
+  gerarCamposEntrada();
+}
+
+// Cache para evitar operações repetidas
+const cache = {
+  dadosGrafico: null,
+  ultimaAtualizacao: 0,
+};
 
 function salvarTiposBebidas() {
   localStorage.setItem("tiposBebidas", JSON.stringify(tiposBebidas));
@@ -337,11 +369,11 @@ function verificarRecuperacaoDados() {
       ? new Date(ultimoSalvamento)
       : new Date();
 
-    // Criar modal personalizado para restauração
+    // Criar modal personalizado para restauração com cores legíveis
     const recoveryModal = document.createElement("div");
     recoveryModal.innerHTML = `
       <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="recoveryOverlay">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card-light">
           <div class="mt-3">
             <div class="flex items-center justify-center">
               <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
@@ -351,25 +383,25 @@ function verificarRecuperacaoDados() {
               </div>
             </div>
             
-            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2 text-center">Dados Não Salvos Encontrados</h3>
+            <h3 class="text-lg leading-6 font-medium text-text-light mt-2 text-center">Dados Não Salvos Encontrados</h3>
             
             <div class="mt-4 px-2 py-2">
-              <p class="text-sm text-gray-500">
+              <p class="text-sm text-text-light">
                 Encontramos dados de cálculo manual não salvos da sua sessão anterior, 
                 modificados às ${dataUltimoSalvamento.toLocaleTimeString()} de ${dataUltimoSalvamento.toLocaleDateString()}.
               </p>
               
-              <div class="mt-3 bg-gray-50 p-2 rounded-md">
-                <p class="text-sm font-medium">Resumo dos dados encontrados:</p>
-                <ul class="mt-1 text-xs text-gray-600 list-disc pl-5">
+              <div class="mt-3 bg-gray-700 p-2 rounded-md">
+                <p class="text-sm font-medium text-text-light">Resumo dos dados encontrados:</p>
+                <ul class="mt-1 text-xs text-text-light list-disc pl-5">
                   ${resumo.map((item) => `<li>${item}</li>`).join("")}
                 </ul>
-                <p class="text-xs text-gray-500 mt-1">Total: ${totalItens} entradas em ${
+                <p class="text-xs text-text-light mt-1">Total: ${totalItens} entradas em ${
       resumo.length
     } categorias</p>
               </div>
               
-              <p class="text-sm text-gray-500 mt-3">
+              <p class="text-sm text-text-light mt-3">
                 Deseja restaurar estes dados para continuar seu trabalho?
               </p>
             </div>
@@ -526,12 +558,12 @@ function salvarResultados(resultados) {
   const loadingPopup = document.createElement("div");
   loadingPopup.innerHTML = `
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="loadingOverlay">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card-light">
         <div class="mt-3 text-center">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-          <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Enviando dados...</h3>
+          <h3 class="text-lg leading-6 font-medium text-text-light mt-2">Enviando dados...</h3>
           <div class="mt-2 px-7 py-3">
-            <p class="text-sm text-gray-500">
+            <p class="text-sm text-text-light">
               Aguarde enquanto seus dados são salvos no servidor.
             </p>
           </div>
@@ -564,25 +596,25 @@ function salvarResultados(resultados) {
         .filter((item) => item !== "")
         .join("");
 
-      // Criar e mostrar o popup de sucesso
+      // Criar e mostrar o popup de sucesso com cores legíveis
       const successPopup = document.createElement("div");
       successPopup.innerHTML = `
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="successOverlay">
-          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card-light">
             <div class="mt-3 text-center">
               <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
                 <svg class="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
               </div>
-              <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Dados Salvos com Sucesso!</h3>
+              <h3 class="text-lg leading-6 font-medium text-text-light mt-2">Dados Salvos com Sucesso!</h3>
               <div class="mt-2 px-7 py-3">
-                <p class="text-sm text-gray-500">
+                <p class="text-sm text-text-light">
                   O consumo foi registrado corretamente no turno <strong>${turno}</strong> em <strong>${data.toLocaleString()}</strong>.
                 </p>
-                <div class="mt-4 border-t pt-4">
-                  <p class="text-sm font-medium text-left">Resumo do consumo:</p>
-                  <ul class="text-sm text-left list-disc pl-5 mt-2">
+                <div class="mt-4 border-t border-gray-600 pt-4">
+                  <p class="text-sm font-medium text-left text-text-light">Resumo do consumo:</p>
+                  <ul class="text-sm text-left list-disc pl-5 mt-2 text-text-light">
                     ${resumoItens}
                   </ul>
                 </div>
@@ -626,23 +658,23 @@ function salvarResultados(resultados) {
         document.body.removeChild(loadingPopup);
       }
 
-      // Mostrar popup de erro
+      // Mostrar popup de erro com cores legíveis
       const errorPopup = document.createElement("div");
       errorPopup.innerHTML = `
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="errorOverlay">
-          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card-light">
             <div class="mt-3 text-center">
               <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                 <svg class="h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </div>
-              <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">Erro ao Salvar Dados</h3>
+              <h3 class="text-lg leading-6 font-medium text-text-light mt-2">Erro ao Salvar Dados</h3>
               <div class="mt-2 px-7 py-3">
-                <p class="text-sm text-gray-500">
+                <p class="text-sm text-text-light">
                   Ocorreu um erro ao tentar salvar os dados no servidor. Verifique sua conexão e tente novamente.
                 </p>
-                <p class="text-xs text-red-500 mt-2">
+                <p class="text-xs text-red-400 mt-2">
                   Detalhes técnicos: ${error.message}
                 </p>
               </div>
@@ -866,7 +898,7 @@ function inicializarEventListeners() {
         if (quantidade > 0) {
           const bebidaInfo = tiposBebidas.find((b) => b.id === bebidaId);
           return bebidaInfo
-            ? `<li class="flex justify-between my-1"><span class="font-medium">${bebidaInfo.nome}</span> <span class="font-bold">${quantidade} unidades</span></li>`
+            ? `<li class="flex justify-between my-1"><span class="font-medium text-text-light">${bebidaInfo.nome}</span> <span class="font-bold text-text-light">${quantidade} unidades</span></li>`
             : "";
         }
         return "";
@@ -883,11 +915,11 @@ function inicializarEventListeners() {
       return;
     }
 
-    // Criar o modal de confirmação personalizado
+    // Criar o modal de confirmação personalizado com cores corrigidas para melhor legibilidade
     const confirmModal = document.createElement("div");
     confirmModal.innerHTML = `
       <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="confirmSendOverlay">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-card-light">
           <div class="mt-3">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
               <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -895,22 +927,22 @@ function inicializarEventListeners() {
               </svg>
             </div>
             
-            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2 text-center">Cálculo Concluído</h3>
+            <h3 class="text-lg leading-6 font-medium text-text-light mt-2 text-center">Cálculo Concluído</h3>
             
             <div class="mt-2 px-2 py-2">
-              <p class="text-sm text-gray-600 mb-2">
+              <p class="text-sm text-text-light mb-2">
                 O cálculo das bebidas foi concluído com sucesso. Deseja salvar estes dados no banco de dados?
               </p>
               
-              <div class="mt-3 bg-gray-50 p-3 rounded-md max-h-48 overflow-y-auto">
-                <p class="text-sm font-medium text-gray-700 border-b pb-1 mb-2">Resumo dos resultados:</p>
-                <ul class="text-sm text-gray-600">
+              <div class="mt-3 bg-gray-700 p-3 rounded-md max-h-48 overflow-y-auto">
+                <p class="text-sm font-medium text-text-light border-b border-gray-500 pb-1 mb-2">Resumo dos resultados:</p>
+                <ul class="text-sm text-text-light">
                   ${resumoItens}
                 </ul>
               </div>
               
               <div class="mt-4">
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-text-light">
                   <span class="font-semibold">Nota:</span> Após salvar, estes dados ficarão disponíveis no histórico e no gráfico.
                 </p>
               </div>
@@ -1064,88 +1096,103 @@ async function carregarDadosGrafico() {
   }
 }
 
-let graficoConsumo; // Variável global para armazenar a instância do gráfico
-
 async function atualizarGrafico() {
   try {
-    const dados = await carregarDadosGrafico();
-    const ctx = document.getElementById("graficoConsumo").getContext("2d");
+    // Usar cache se os dados foram buscados nos últimos 5 minutos
+    const agora = Date.now();
+    if (
+      !chartInitialized ||
+      !cache.dadosGrafico ||
+      agora - cache.ultimaAtualizacao > 5 * 60 * 1000
+    ) {
+      // Carregar Chart.js apenas quando necessário
+      if (!Chart) {
+        await loadChartModules();
+      }
 
-    if (graficoConsumo) {
-      graficoConsumo.destroy();
-    }
+      const dados = await carregarDadosGrafico();
+      cache.dadosGrafico = dados;
+      cache.ultimaAtualizacao = agora;
 
-    const hoje = new Date();
-    const seteDiasAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const ctx = document.getElementById("graficoConsumo").getContext("2d");
 
-    graficoConsumo = new Chart(ctx, {
-      type: "line",
-      data: {
-        datasets: Object.entries(dados).map(([bebida, valores]) => ({
-          label: bebida,
-          data: valores.filter((valor) => valor.x >= seteDiasAtras),
-          borderColor: `rgb(${Math.random() * 255},${Math.random() * 255},${
-            Math.random() * 255
-          })`,
-          tension: 0.1,
-        })),
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            type: "time",
-            time: {
-              unit: "day",
-              displayFormats: {
-                day: "dd/MM",
+      if (graficoConsumo) {
+        graficoConsumo.destroy();
+      }
+
+      const hoje = new Date();
+      const seteDiasAtras = new Date(hoje.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      graficoConsumo = new Chart(ctx, {
+        type: "line",
+        data: {
+          datasets: Object.entries(dados).map(([bebida, valores]) => ({
+            label: bebida,
+            data: valores.filter((valor) => valor.x >= seteDiasAtras),
+            borderColor: `rgb(${Math.random() * 255},${Math.random() * 255},${
+              Math.random() * 255
+            })`,
+            tension: 0.1,
+          })),
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: "time",
+              time: {
+                unit: "day",
+                displayFormats: {
+                  day: "dd/MM",
+                },
+              },
+              min: seteDiasAtras,
+              max: hoje,
+              ticks: {
+                source: "auto",
+                maxRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 7,
               },
             },
-            min: seteDiasAtras,
-            max: hoje,
-            ticks: {
-              source: "auto",
-              maxRotation: 0,
-              autoSkip: true,
-              maxTicksLimit: 7,
+            y: {
+              beginAtZero: true,
+              suggestedMax: 10, // Ajuste este valor conforme necessário
             },
           },
-          y: {
-            beginAtZero: true,
-            suggestedMax: 10, // Ajuste este valor conforme necessário
-          },
-        },
-        plugins: {
-          legend: {
-            display: true,
-            position: "top",
-          },
-          zoom: {
+          plugins: {
+            legend: {
+              display: true,
+              position: "top",
+            },
             zoom: {
-              wheel: {
+              zoom: {
+                wheel: {
+                  enabled: false,
+                },
+                pinch: {
+                  enabled: false,
+                },
+                mode: "xy",
+              },
+              pan: {
                 enabled: false,
               },
-              pinch: {
-                enabled: false,
-              },
-              mode: "xy",
             },
-            pan: {
-              enabled: false,
+          },
+          layout: {
+            padding: {
+              left: 10,
+              right: 10,
+              top: 20,
+              bottom: 10,
             },
           },
         },
-        layout: {
-          padding: {
-            left: 10,
-            right: 10,
-            top: 20,
-            bottom: 10,
-          },
-        },
-      },
-    });
+      });
+      chartInitialized = true;
+    }
   } catch (error) {
     console.error("Erro ao atualizar o gráfico:", error);
   }
@@ -1285,8 +1332,8 @@ function carregarValoresManualDoLocalStorage() {
 // Modifique o evento DOMContentLoaded para incluir a verificação de recuperação
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    carregarTiposBebidas();
-    gerarCamposEntrada();
+    // Primeiro carrega apenas os dados essenciais
+    carregarDadosIniciais();
 
     // Restauração de dados - apenas se não foram limpos intencionalmente
     const limpezaIntencional = localStorage.getItem("camposManuaisLimpos");
@@ -1302,19 +1349,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     carregarValoresDoLocalStorage();
     carregarResultadosDoLocalStorage();
 
-    // Reinicializar todos os event listeners
-    inicializarEventListeners();
-
-    // Inicializar especificamente os botões de limpeza
-    inicializarBotoesEspeciais();
-
+    // Inicializar interface primeira
     inicializarMenuMobile();
     inicializarMenuAbas();
-    await atualizarGrafico();
 
-    // Auto-salvamento
-    iniciarAutoSalvamento();
-    iniciarAutoSalvamentoManual();
+    // Carregamento adiado para UI handlers que não são críticos
+    setTimeout(() => {
+      inicializarEventListeners();
+      inicializarBotoesEspeciais();
+
+      // Auto-salvamento
+      iniciarAutoSalvamento();
+      iniciarAutoSalvamentoManual();
+
+      // Adicionamos observador de interseção para carregar gráfico apenas quando visível
+      const graficoContainer = document.querySelector(
+        ".dashboard-card:nth-child(3)"
+      );
+      if (graficoContainer) {
+        const graficoObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                atualizarGrafico();
+                graficoObserver.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.1 }
+        );
+        graficoObserver.observe(graficoContainer);
+      }
+    }, 100);
   } catch (error) {
     console.error("Erro durante a inicialização:", error);
   }

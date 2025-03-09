@@ -5,11 +5,43 @@
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="description"
+      content="Sistema de controle de bebidas para gerenciamento de inventário" />
+    <!-- Preloads críticos para carregamento inicial -->
+    <link
+      rel="preload"
+      href="assets/favicon.ico"
+      as="image"
+      type="image/x-icon" />
+    <link
+      rel="preload"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+      as="style" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
     <title>Dashboard de Bebidas</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon" />
+
+    <!-- Meta tags para performance/SEO -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="theme-color" content="#e53e3e" />
+    <link rel="manifest" href="manifest.json" />
+
+    <!-- FontAwesome carregado com atributo async para não bloquear renderização -->
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
-    <link rel="icon" href="assets/favicon.ico" type="image/x-icon" />
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+      media="print"
+      onload="this.media='all'" />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    </noscript>
   </head>
   <body class="min-h-screen gradient-bg">
     <div id="notification" class="notification" role="alert"></div>
@@ -237,5 +269,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.0/chartjs-plugin-zoom.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script>
+      // Detecção de navegador sem suporte
+      if (!("IntersectionObserver" in window)) {
+        document.write(
+          '<script src="https://cdn.jsdelivr.net/npm/intersection-observer@0.12.0/intersection-observer.min.js"><\/script>'
+        );
+      }
+
+      // Service Worker Registration
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/service-worker.js")
+            .catch((err) => {
+              console.log("Falha no registro do service worker:", err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

@@ -8,7 +8,9 @@
     "build": "npm run clean && webpack --mode production",
     "build:dev": "npm run clean && webpack --mode development",
     "start": "webpack serve --mode development",
-    "start:hot": "webpack serve --hot --mode development"
+    "start:hot": "webpack serve --hot --mode development",
+    "analyze": "webpack --mode production --profile --json > stats.json && webpack-bundle-analyzer stats.json",
+    "optimize": "webpack --mode production --progress"
   },
   "keywords": [
     "bebidas",
@@ -49,6 +51,12 @@
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-plugin-zoom": "^2.2.0",
     "date-fns": "^4.1.0",
-    "firebase": "^9.23.0"
-  }
+    "firebase": "^9.23.0",
+    "core-js": "^3.36.0"
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not op_mini all"
+  ]
 }

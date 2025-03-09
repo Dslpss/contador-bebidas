@@ -1,9 +1,14 @@
+/* Otimização de estilos críticos para renderização inicial */
+
+/* Importações CSS críticas para o carregamento inicial */
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap");
+/* Fonte carregada com display swap para evitar bloqueio de renderização */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap&display=swap");
 
+/* Variáveis de cor e estilos básicos */
 :root {
   /* Nova paleta de cores vermelho e preto */
   --primary-color: #e53e3e; /* Vermelho */
@@ -18,19 +23,25 @@
   --warning-color: #ed8936; /* Laranja mantido */
 }
 
+/* Configurações de corpo e layout críticas - Carregadas primeiro */
 body {
   font-family: "Poppins", sans-serif;
   background-color: var(--background-light);
   color: var(--text-light);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  content-visibility: auto; /* Otimização para renderização */
 }
 
-/* Melhorias de legibilidade */
+/* Estilos críticos para componentes visíveis inicialmente */
 .dashboard-card {
   background-color: var(--card-light);
-  color: var(--text-light); /* Texto claro nos cards */
+  color: var(--text-light);
   border-radius: 16px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .dashboard-card h2 {
@@ -49,10 +60,8 @@ textarea {
   background-color: #f9f9f9 !important;
 }
 
-.text-gray-700 {
-  color: var(--text-light) !important;
-}
-
+/* Otimização de seletores */
+.text-gray-700,
 .text-gray-900 {
   color: var(--text-light) !important;
 }
@@ -125,7 +134,8 @@ textarea {
   background-color: var(--secondary-dark);
 }
 
-@media (max-width: 640px) {
+/* Utilização de um media query consolidado para mobile */
+@media (max-width: 767px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -142,6 +152,30 @@ textarea {
   input[type="text"],
   select {
     font-size: 0.875rem;
+  }
+
+  /* Comportamento do sidebar em mobile */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    background-color: rgba(31, 41, 55, 0.95);
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  #sidebar.hidden {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  #sidebar:not(.hidden) {
+    transform: translateX(0);
+    opacity: 1;
   }
 }
 
@@ -233,31 +267,6 @@ textarea {
   transform: translateY(-8px) rotate(-45deg);
 }
 
-@media (max-width: 767px) {
-  #sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 50;
-    background-color: rgba(31, 41, 55, 0.95);
-    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-
-  #sidebar.hidden {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-
-  #sidebar:not(.hidden) {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
 .confirmation-dialog {
   background-color: white;
   border-radius: 8px;
@@ -305,6 +314,7 @@ textarea {
   outline-offset: 2px;
 }
 
+/* Otimizando animações para performance */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -423,14 +433,13 @@ textarea {
   --tw-ring-color: rgba(147, 197, 253, var(--tw-ring-opacity));
 }
 
+/* Compactando regras repetitivas */
 .text-primary {
   color: var(--primary-color);
 }
-
 .text-secondary {
   color: var(--secondary-color);
 }
-
 .text-highlight {
   color: var(--text-light);
   font-weight: bold;
@@ -456,4 +465,98 @@ select:focus {
 .w-full.inline-flex.justify-center.py-2.px-4.border.border-gray-300 {
   color: #333; /* Texto escuro para botões com fundo claro */
   background-color: #e1e1e1;
+}
+
+/* Adicionar regras específicas para os popups de confirmação */
+.fixed.inset-0.bg-gray-600.bg-opacity-50 .relative.top-20.mx-auto.p-5 {
+  background-color: var(--card-light);
+  color: var(--text-light);
+}
+
+/* Corrigir cores no popup de confirmação do cálculo manual */
+#confirmSendOverlay .bg-gray-700 {
+  background-color: var(--secondary-color);
+  color: var(--text-light);
+}
+
+#confirmSendOverlay .text-gray-600,
+#confirmSendOverlay .text-gray-700 {
+  color: var(--text-light) !important;
+}
+
+/* Cores específicas para popups de erro e sucesso */
+#successOverlay .text-gray-900,
+#errorOverlay .text-gray-900,
+#loadingOverlay .text-gray-900 {
+  color: var(--text-light) !important;
+}
+
+#successOverlay .text-gray-500,
+#errorOverlay .text-gray-500,
+#loadingOverlay .text-gray-500 {
+  color: var(--text-light) !important;
+  opacity: 0.9;
+}
+
+#errorOverlay .text-red-500 {
+  color: #fca5a5 !important; /* Vermelho mais claro para melhor legibilidade em fundo escuro */
+}
+
+/* Melhorar contraste das bordas nos popups */
+.border-t {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Adicionando estilos específicos para o modal de recuperação de dados */
+#recoveryOverlay .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+#recoveryOverlay .text-blue-600 {
+  color: #60a5fa;
+}
+
+#recoveryOverlay .bg-gray-700 {
+  background-color: var(--secondary-color);
+  color: var(--text-light);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Elementos específicos do modal de recuperação */
+#recoveryOverlay ul.text-text-light {
+  color: var(--text-light);
+  opacity: 0.9;
+}
+
+#recoveryOverlay p.text-text-light {
+  color: var(--text-light);
+  opacity: 0.95;
+}
+
+#recoveryOverlay .text-xs {
+  font-size: 0.75rem;
+}
+
+/* Botões dentro do modal de recuperação */
+#recoveryOverlay button {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#recoveryOverlay #restaurarDados {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+#recoveryOverlay #restaurarDados:hover {
+  background-color: var(--primary-dark);
+}
+
+/* Garantir que todos os textos em modais e overlays estejam legíveis */
+.fixed.inset-0 h3,
+.fixed.inset-0 p,
+.fixed.inset-0 li {
+  color: var(--text-light);
 }

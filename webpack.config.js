@@ -26,7 +26,7 @@ module.exports = (env, argv) => {
     },
     output: {
       path: path.resolve(__dirname, "dist"),
-      filename: "[name].[contenthash].js",
+      filename: isProduction ? "[name].[contenthash].js" : "[name].js",
       publicPath: "/",
       clean: true,
     },
@@ -38,8 +38,18 @@ module.exports = (env, argv) => {
           use: {
             loader: "babel-loader",
             options: {
-              presets: ["@babel/preset-env"],
+              presets: [
+                [
+                  "@babel/preset-env",
+                  {
+                    useBuiltIns: "usage",
+                    corejs: 3,
+                    targets: "> 0.25%, not dead",
+                  },
+                ],
+              ],
               plugins: ["@babel/plugin-syntax-dynamic-import"],
+              cacheDirectory: true, // Adicionar cache para compilações mais rápidas
             },
           },
         },
@@ -47,9 +57,24 @@ module.exports = (env, argv) => {
           test: /\.css$/,
           use: [
             isProduction ? MiniCssExtractPlugin.loader : "style-loader",
-            "css-loader",
+            {
+              loader: "css-loader",
+              options: {
+                importLoaders: 1,
+              },
+            },
             "postcss-loader",
           ],
+        },
+        // Adicionando otimização para imagens
+        {
+          test: /\.(png|svg|jpg|jpeg|gif|ico)$/i,
+          type: "asset",
+          parser: {
+            dataUrlCondition: {
+              maxSize: 8 * 1024, // 8kb - converter imagens menores para base64
+            },
+          },
         },
       ],
     },
@@ -58,16 +83,46 @@ module.exports = (env, argv) => {
         template: "./src/pages/index.html",
         filename: "index.html",
         chunks: ["main"],
+        minify: isProduction
+          ? {
+              collapseWhitespace: true,
+              removeComments: true,
+              removeRedundantAttributes: true,
+              useShortDoctype: true,
+              removeEmptyAttributes: true,
+              removeStyleLinkTypeAttributes: true,
+              keepClosingSlash: true,
+              minifyJS: true,
+              minifyCSS: true,
+              minifyURLs: true,
+            }
+          : false,
       }),
       new HtmlWebpackPlugin({
         template: "./src/pages/relatorio.html",
         filename: "relatorio.html",
         chunks: ["relatorio"],
+        minify: isProduction
+          ? {
+              collapseWhitespace: true,
+              removeComments: true,
+              removeRedundantAttributes: true,
+              removeEmptyAttributes: true,
+            }
+          : false,
       }),
       new HtmlWebpackPlugin({
         template: "./src/pages/resultados.html",
         filename: "resultados.html",
         chunks: ["resultados"],
+        minify: isProduction
+          ? {
+              collapseWhitespace: true,
+              removeComments: true,
+              removeRedundantAttributes: true,
+              removeEmptyAttributes: true,
+            }
+          : false,
       }),
       new MiniCssExtractPlugin({
         filename: isProduction
@@ -75,6 +130,21 @@ module.exports = (env, argv) => {
           : "css/[name].css",
       }),
       new Dotenv(),
+      // Adicionar PurgeCSS para remover CSS não utilizado
+      isProduction &&
+        new PurgeCSSPlugin({
+          paths: glob.sync(`${PATHS.src}/**/*`, { nodir: true }),
+          safelist: {
+            standard: [
+              /^notification/,
+              /^gradient-bg/,
+              /^nav-item/,
+              /^custom-button/,
+            ],
+            deep: [/^chart/, /modal/, /overlay/],
+          },
+        }),
+      new webpack.optimize.ModuleConcatenationPlugin(), // Escopo de módulo para otimização
       new CopyWebpackPlugin({
         patterns: [
           {
@@ -88,7 +158,7 @@ module.exports = (env, argv) => {
           },
         ],
       }),
-    ],
+    ].filter(Boolean), // Remover plugins false/null
     devServer: {
       static: {
         directory: path.join(__dirname, "dist"),
@@ -100,11 +170,41 @@ module.exports = (env, argv) => {
     },
     optimization: {
       minimize: isProduction,
-      minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
+      minimizer: [
+        new TerserPlugin({
+          terserOptions: {
+            parse: {
+              ecma: 8,
+            },
+            compress: {
+              ecma: 5,
+              warnings: false,
+              comparisons: false,
+              inline: 2,
+              drop_console: isProduction,
+            },
+            mangle: {
+              safari10: true,
+            },
+            output: {
+              ecma: 5,
+              comments: false,
+              ascii_only: true,
+            },
+          },
+          parallel: true,
+        }),
+        new CssMinimizerPlugin({
+          minimizerOptions: {
+            preset: ["default", { discardComments: { removeAll: true } }],
+          },
+        }),
+      ],
       splitChunks: {
         chunks: "all",
-        maxInitialRequests: Infinity,
-        minSize: 0,
+        maxInitialRequests: 25, // Aumentar para permitir mais chunks
+        minSize: 20000,
+        maxSize: 250000, // Limitando tamanho dos chunks
         cacheGroups: {
           vendor: {
             test: /[\\/]node_modules[\\/]/,
@@ -112,15 +212,45 @@ module.exports = (env, argv) => {
               const packageName = module.context.match(
                 /[\\/]node_modules[\\/](.*?)([\\/]|$)/
               )[1];
-              return `npm.${packageName.replace("@", "")}`;
+              return `vendor.${packageName.replace("@", "")}`;
             },
+            priority: 10,
+          },
+          firebase: {
+            test: /[\\/]node_modules[\\/](firebase|@firebase)/,
+            name: "firebase-bundle",
+            priority: 20,
+          },
+          chart: {
+            test: /[\\/]node_modules[\\/](chart\.js|chartjs)/,
+            name: "chart-bundle",
+            priority: 20,
+          },
+          commons: {
+            name: "commons",
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
           },
         },
       },
+      runtimeChunk: "single",
     },
     resolve: {
       extensions: [".js", ".json"],
+      modules: ["node_modules"],
+      // Adicionando alias para imports mais curtos
+      alias: {
+        "@js": path.resolve(__dirname, "src/js/"),
+        "@css": path.resolve(__dirname, "src/css/"),
+        "@assets": path.resolve(__dirname, "src/assets/"),
+      },
     },
     devtool: isProduction ? "source-map" : "eval-source-map",
+    performance: {
+      hints: isProduction ? "warning" : false,
+      maxAssetSize: 500000, // 500KB
+      maxEntrypointSize: 500000, // 500KB
+    },
   };
 };
