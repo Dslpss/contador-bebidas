@@ -50,9 +50,11 @@
     "chart.js": "^3.9.1",
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-plugin-zoom": "^2.2.0",
+    "core-js": "^3.36.0",
     "date-fns": "^4.1.0",
     "firebase": "^9.23.0",
-    "core-js": "^3.36.0"
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2"
   },
   "browserslist": [
     ">0.2%",

@@ -12,6 +12,8 @@ import {
   deleteDoc,
   where,
 } from "firebase/firestore";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 // Implementar lazy loading para Chart.js
 let Chart, zoomPlugin;
@@ -1508,19 +1510,81 @@ document.addEventListener("DOMContentLoaded", async () => {
         graficoObserver.observe(graficoContainer);
       }
     }, 100);
+
+    const btnExportar = document.getElementById("exportarDados");
+    if (btnExportar) {
+      // Remover eventos anteriores para evitar duplicações
+      btnExportar.replaceWith(btnExportar.cloneNode(true));
+      // Adicionar o evento uma única vez
+      document.getElementById("exportarDados").addEventListener("click", () => {
+        salvarValoresNoLocalStorage(); // Garante dados atualizados
+        exportarDados();
+      });
+    }
   } catch (error) {
     console.error("Erro durante a inicialização:", error);
   }
 });
 
 function exportarDados() {
-  // Implementação da exportação de dados
-  mostrarNotificacao("Exportação de dados não implementada", "erro");
-}
+  try {
+    // Busca apenas os dados do cálculo manual
+    const valoresManual = {};
+    tiposBebidas.forEach((bebida) => {
+      const campo = document.getElementById(`${bebida.id}_manual`);
+      if (campo && campo.value) {
+        valoresManual[bebida.id] = campo.value;
+      }
+    });
 
-document
-  .getElementById("exportarDados")
-  .addEventListener("click", exportarDados);
+    // Verifica se existem dados para exportar
+    if (
+      !tiposBebidas.length ||
+      Object.keys(valoresManual).filter((k) => valoresManual[k]).length === 0
+    ) {
+      mostrarNotificacao("Nenhum dado manual para exportar", "erro");
+      return;
+    }
+
+    // Calcula os resultados manuais para mostrar no PDF
+    const resultados = calcularManual();
+
+    // Monta os dados para a tabela
+    const tableData = tiposBebidas
+      .filter((bebida) => valoresManual[bebida.id])
+      .map((bebida) => [
+        bebida.nome,
+        valoresManual[bebida.id] || "",
+        resultados[bebida.id] || "0",
+      ]);
+
+    // Cria o PDF
+    const doc = new jsPDF();
+    doc.setFont("helvetica", "bold");
+    doc.text("Relatório de Consumo de Bebidas - Cálculo Manual", 14, 18);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Data de exportação: ${new Date().toLocaleString()}`, 14, 25);
+
+    // Usa o plugin autoTable
+    autoTable(doc, {
+      startY: 30,
+      head: [["Bebida", "Valores Individuais", "Total"]],
+      body: tableData,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [229, 62, 62] },
+    });
+
+    doc.save("consumo-bebidas-manual.pdf");
+    mostrarNotificacao(
+      "PDF dos dados manuais exportado com sucesso!",
+      "sucesso"
+    );
+  } catch (error) {
+    console.error("Erro ao exportar PDF:", error);
+    mostrarNotificacao("Erro ao gerar PDF: " + error.message, "erro");
+  }
+}
 
 function atualizarGraficoPeriodicamente() {
   setInterval(async () => {
