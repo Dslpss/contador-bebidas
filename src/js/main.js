@@ -515,22 +515,61 @@ function salvarEstadoManual() {
   console.log("Histórico completo:", historicoManual);
 }
 
+// Adicionar nova função para atualizar display sem popup
+function atualizarDisplayResultados(resultados) {
+  const displayResultados = document.getElementById("resultado_manual_display");
+  if (displayResultados) {
+    displayResultados.innerHTML = "";
+    Object.entries(resultados).forEach(([bebida, quantidade]) => {
+      const bebidaInfo = tiposBebidas.find((b) => b.id === bebida);
+      if (bebidaInfo) {
+        displayResultados.innerHTML += `<p>${bebidaInfo.nome}: ${quantidade}</p>`;
+      }
+    });
+  }
+}
+
 function desfazerUltimoResultado(bebidaId) {
-  const campo = document.getElementById(`${bebidaId}_manual`);
-  const valoresAtuais = campo.value
-    .split(",")
-    .map((v) => v.trim())
-    .filter((v) => v !== "");
+  try {
+    const campo = document.getElementById(`${bebidaId}_manual`);
+    if (!campo) {
+      mostrarNotificacao(`Campo não encontrado para ${bebidaId}`, "erro");
+      return;
+    }
 
-  if (valoresAtuais.length > 0) {
-    // Remove o último resultado
-    valoresAtuais.pop();
-    campo.value = valoresAtuais.join(", "); // Atualiza o campo com os valores restantes
-    mostrarNotificacao(`Último resultado removido para ${bebidaId}`, "sucesso");
+    const valoresAtuais = campo.value
+      .split(",")
+      .map((v) => v.trim())
+      .filter((v) => v !== "");
 
-    // Não atualizar o localStorage ou enviar dados ao banco aqui
-  } else {
-    mostrarNotificacao("Não há resultados para desfazer", "erro");
+    if (valoresAtuais.length > 0) {
+      // Remove o último resultado
+      valoresAtuais.pop();
+      campo.value = valoresAtuais.join(", ");
+
+      // Salvar no localStorage após desfazer
+      salvarValoresManualNoLocalStorage();
+
+      // Calcular resultados e atualizar display sem popup
+      const resultados = {};
+      tiposBebidas.forEach((bebida) => {
+        const input = document.getElementById(`${bebida.id}_manual`).value;
+        resultados[bebida.id] = calcularTotal(input);
+      });
+
+      // Usar nova função para atualizar display sem popup
+      atualizarDisplayResultados(resultados);
+
+      mostrarNotificacao(
+        `Último resultado removido para ${bebidaId}`,
+        "sucesso"
+      );
+    } else {
+      mostrarNotificacao("Não há resultados para desfazer", "info");
+    }
+  } catch (error) {
+    console.error("Erro ao desfazer:", error);
+    mostrarNotificacao("Erro ao desfazer operação", "erro");
   }
 }
 
@@ -1026,6 +1065,64 @@ function inicializarBotoesEspeciais() {
         limparCamposAutomaticos();
       });
   }
+
+  // Botão para adicionar nova bebida
+  const btnAdicionar = document.getElementById("adicionarBebida");
+  if (btnAdicionar) {
+    btnAdicionar.addEventListener("click", (e) => {
+      e.preventDefault();
+      const nome = prompt("Digite o nome da nova bebida:");
+      if (!nome) return;
+      const unidades = prompt("Unidades por pacote (número):", "6");
+      const unidadesPorPacote = parseInt(unidades, 10);
+      if (isNaN(unidadesPorPacote)) {
+        mostrarNotificacao("Unidades inválidas", "erro");
+        return;
+      }
+      // gera um id simples a partir do nome
+      const id = nome
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_|_$/g, "");
+      tiposBebidas.push({ id, nome, unidadesPorPacote });
+      salvarTiposBebidas();
+      atualizarListaBebidas();
+      gerarCamposEntrada();
+      mostrarNotificacao("Bebida adicionada com sucesso!", "sucesso");
+    });
+  }
+
+  // Botão para gerenciar bebidas
+  const btnGerenciar = document.getElementById("gerenciarBebidas");
+  const modalGerenciar = document.getElementById("modalGerenciarBebidas");
+  if (btnGerenciar && modalGerenciar) {
+    btnGerenciar.addEventListener("click", () => {
+      atualizarListaBebidas();
+      modalGerenciar.classList.remove("hidden");
+    });
+    // Fechar ao clicar fora do conteúdo interno
+    modalGerenciar.addEventListener("click", (e) => {
+      if (e.target.id === "modalGerenciarBebidas") {
+        modalGerenciar.classList.add("hidden");
+      }
+    });
+    // Fechar ao clicar no botão X
+    const btnFechar = document.getElementById("fecharGerenciarBebidas");
+    if (btnFechar) {
+      btnFechar.addEventListener("click", () => {
+        modalGerenciar.classList.add("hidden");
+      });
+    }
+    // Fechar ao clicar no botão "Fechar" (id="fecharModal")
+    const btnFecharModal = document.getElementById("fecharModal");
+    if (btnFecharModal) {
+      btnFecharModal.addEventListener("click", () => {
+        modalGerenciar.classList.add("hidden");
+      });
+    }
+  }
 }
 
 function atualizarListaBebidas() {
@@ -1033,12 +1130,16 @@ function atualizarListaBebidas() {
   listaBebidas.innerHTML = "";
   tiposBebidas.forEach((bebida) => {
     const li = document.createElement("li");
+    li.className = "flex items-center justify-between";
     li.innerHTML = `
-      ${bebida.nome} (${bebida.unidadesPorPacote} por pacote)
-      <button class="excluir-bebida" data-id="${bebida.id}">Excluir</button>
+      <span class="flex-1">${bebida.nome} (${bebida.unidadesPorPacote} por pacote)</span>
+      <button class="editar-bebida px-2 text-blue-400 hover:text-blue-600 mr-2" data-id="${bebida.id}">Editar</button>
+      <button class="excluir-bebida px-2 text-red-400 hover:text-red-600" data-id="${bebida.id}">Excluir</button>
     `;
     listaBebidas.appendChild(li);
   });
+
+  // Excluir
   document.querySelectorAll(".excluir-bebida").forEach((button) => {
     button.addEventListener("click", (e) => {
       const id = e.target.getAttribute("data-id");
@@ -1046,6 +1147,32 @@ function atualizarListaBebidas() {
       salvarTiposBebidas();
       atualizarListaBebidas();
       gerarCamposEntrada();
+    });
+  });
+
+  // Editar
+  document.querySelectorAll(".editar-bebida").forEach((button) => {
+    button.addEventListener("click", (e) => {
+      const id = e.target.getAttribute("data-id");
+      const bebida = tiposBebidas.find((b) => b.id === id);
+      if (bebida) {
+        const novoNome = prompt("Novo nome da bebida:", bebida.nome);
+        const novaQtd = prompt(
+          "Unidades por pacote:",
+          bebida.unidadesPorPacote
+        );
+        const u = parseInt(novaQtd, 10);
+        if (!novoNome || isNaN(u)) {
+          mostrarNotificacao("Entrada inválida", "erro");
+          return;
+        }
+        bebida.nome = novoNome;
+        bebida.unidadesPorPacote = u;
+        salvarTiposBebidas();
+        atualizarListaBebidas();
+        gerarCamposEntrada();
+        mostrarNotificacao("Bebida atualizada", "sucesso");
+      }
     });
   });
 }
